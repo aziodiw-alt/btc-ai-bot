@@ -1,0 +1,6 @@
+python-telegram-bot==22.8
+openai
+python-dotenv
+requests
+pandas
+numpy
