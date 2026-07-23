@@ -62,6 +62,16 @@ def init_database():
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS signal_subscribers (
+                telegram_chat_id INTEGER PRIMARY KEY,
+                enabled INTEGER NOT NULL DEFAULT 1,
+                last_signal_key TEXT,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
 
 
 def get_open_trade(telegram_user_id):
@@ -355,3 +365,67 @@ def get_bybit_fifo_statistics(telegram_user_id, symbol="BTCUSDT"):
         "open_average_price": open_cost / open_quantity if open_quantity else 0.0,
         "unmatched_sell_quantity": unmatched_sell_qty,
     }
+
+
+def toggle_signal_subscription(telegram_chat_id):
+    """Включает или выключает автоматические сигналы для Telegram-чата."""
+    now = datetime.now(timezone.utc).isoformat()
+
+    with _connect() as connection:
+        row = connection.execute(
+            """
+            SELECT enabled
+            FROM signal_subscribers
+            WHERE telegram_chat_id = ?
+            """,
+            (telegram_chat_id,),
+        ).fetchone()
+
+        enabled = 0 if row and row["enabled"] else 1
+
+        connection.execute(
+            """
+            INSERT INTO signal_subscribers (
+                telegram_chat_id,
+                enabled,
+                last_signal_key,
+                updated_at
+            )
+            VALUES (?, ?, NULL, ?)
+            ON CONFLICT(telegram_chat_id) DO UPDATE SET
+                enabled = excluded.enabled,
+                last_signal_key = NULL,
+                updated_at = excluded.updated_at
+            """,
+            (telegram_chat_id, enabled, now),
+        )
+
+    return bool(enabled)
+
+
+def get_signal_subscribers():
+    """Возвращает чаты, в которых автоматические сигналы включены."""
+    with _connect() as connection:
+        return connection.execute(
+            """
+            SELECT telegram_chat_id, last_signal_key
+            FROM signal_subscribers
+            WHERE enabled = 1
+            ORDER BY telegram_chat_id
+            """
+        ).fetchall()
+
+
+def set_last_signal_key(telegram_chat_id, signal_key):
+    """Запоминает последний сигнал, чтобы не отправлять его повторно."""
+    now = datetime.now(timezone.utc).isoformat()
+
+    with _connect() as connection:
+        connection.execute(
+            """
+            UPDATE signal_subscribers
+            SET last_signal_key = ?, updated_at = ?
+            WHERE telegram_chat_id = ?
+            """,
+            (signal_key, now, telegram_chat_id),
+        )

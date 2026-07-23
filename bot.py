@@ -18,9 +18,12 @@ from database import (
     close_trade,
     get_bybit_fifo_statistics,
     get_open_trade,
+    get_signal_subscribers,
     get_statistics,
     init_database,
     open_trade,
+    set_last_signal_key,
+    toggle_signal_subscription,
 )
 from market import get_ticker
 from strategy import analyze_strategy
@@ -37,6 +40,7 @@ keyboard = ReplyKeyboardMarkup(
         ["📋 Открытая сделка", "📈 Статистика"],
         ["📥 Импорт CSV Bybit"],
         ["🗑 Очистить импорт CSV"],
+        ["🔔 Автосигналы ВКЛ/ВЫКЛ"],
     ],
     resize_keyboard=True,
 )
@@ -389,6 +393,96 @@ Win Rate: {stats["win_rate"]:.1f}%
             os.remove(temp_path)
 
 
+def make_signal_key(result):
+    """Создаёт устойчивый ключ сигнала для защиты от повторных уведомлений."""
+    zone = sorted(result["buy_zone_1"])
+    return (
+        f'{result["grade"]}:'
+        f'{round(zone[0], -2):.0f}:'
+        f'{round(zone[1], -2):.0f}:'
+        f'{int(result["total_score"]) // 5}'
+    )
+
+
+def format_auto_signal(result):
+    return f"""🔔 АВТОСИГНАЛ BTC/USDT
+
+⭐ Качество: {result["grade"]}
+🏆 Оценка: {result["total_score"]}/100
+💰 Текущая цена: {format_number(result["price"])}
+
+🤖 Решение стратегии:
+{result["decision"]}
+
+🎯 Зона покупки 1: {format_zone(result["buy_zone_1"])}
+🎯 Зона покупки 2: {format_zone(result["buy_zone_2"])}
+🛑 Stop Loss: {format_number(result["stop_loss"])}
+💰 Take Profit 1: {format_number(result["take_profit_1"])}
+🚀 Take Profit 2: {format_number(result["take_profit_2"])}
+
+Это информационный сигнал, а не гарантия прибыли. Перед сделкой проверь цену и размер риска."""
+
+
+async def toggle_auto_signals(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+):
+    enabled = toggle_signal_subscription(update.effective_chat.id)
+
+    if enabled:
+        text = (
+            "🔔 Автоматические сигналы включены.\n\n"
+            "Бот проверяет рынок каждые 15 минут и присылает новый сигнал "
+            "только при оценке A или A+."
+        )
+    else:
+        text = "🔕 Автоматические сигналы выключены."
+
+    await update.message.reply_text(text, reply_markup=keyboard)
+
+
+async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
+    subscribers = get_signal_subscribers()
+    if not subscribers:
+        return
+
+    try:
+        result = await asyncio.to_thread(analyze_strategy)
+    except Exception as error:
+        print(f"Ошибка автоматической проверки рынка: {error}")
+        return
+
+    is_signal = (
+        result["grade"] in {"A", "A+"}
+        and result["trend_score"] >= 20
+        and result["total_score"] >= 75
+    )
+
+    signal_key = make_signal_key(result) if is_signal else None
+
+    for subscriber in subscribers:
+        chat_id = subscriber["telegram_chat_id"]
+        previous_key = subscriber["last_signal_key"]
+
+        if not is_signal:
+            if previous_key is not None:
+                set_last_signal_key(chat_id, None)
+            continue
+
+        if previous_key == signal_key:
+            continue
+
+        try:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=format_auto_signal(result),
+                reply_markup=keyboard,
+            )
+            set_last_signal_key(chat_id, signal_key)
+        except Exception as error:
+            print(f"Не удалось отправить сигнал в чат {chat_id}: {error}")
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
     normalized = text.lower()
@@ -408,6 +502,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_open_trade(update)
         elif "статистика" in normalized:
             await show_statistics(update)
+        elif "автосигналы" in normalized:
+            await toggle_auto_signals(update, context)
         elif "очистить импорт csv" in normalized:
             await request_clear_csv(update, context)
         elif "импорт csv" in normalized:
@@ -438,6 +534,12 @@ def main():
     )
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text)
+    )
+    app.job_queue.run_repeating(
+        check_auto_signals,
+        interval=15 * 60,
+        first=30,
+        name="btc_auto_signals",
     )
 
     print("Бот запущен...")
