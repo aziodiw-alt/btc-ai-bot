@@ -1,9 +1,16 @@
+import os
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
 
-DB_PATH = Path(__file__).with_name("trades.db")
+DB_PATH = Path(
+    os.getenv(
+        "DATABASE_PATH",
+        str(Path(__file__).with_name("trades.db")),
+    )
+)
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 DEFAULT_FEE_RATE = 0.001  # 0.1% за операцию; приблизительное значение.
 
 

@@ -4,3 +4,4 @@ python-dotenv
 requests
 pandas
 numpy
+ta==0.11.0
