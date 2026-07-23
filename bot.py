@@ -414,13 +414,15 @@ def format_auto_signal(result):
 🤖 Решение стратегии:
 {result["decision"]}
 
+🟢 Расчётный вход: до {format_number(result["planned_entry"])}
 🎯 Зона покупки 1: {format_zone(result["buy_zone_1"])}
 🎯 Зона покупки 2: {format_zone(result["buy_zone_2"])}
 🛑 Stop Loss: {format_number(result["stop_loss"])}
-💰 Take Profit 1: {format_number(result["take_profit_1"])}
-🚀 Take Profit 2: {format_number(result["take_profit_2"])}
+💰 Take Profit 1: {format_number(result["take_profit_1"])} (около +1.5%)
+🚀 Take Profit 2: {format_number(result["take_profit_2"])} (до +2.0%)
+📏 Запас до сопротивления: {result["available_profit_pct"]:.2f}%
 
-Это информационный сигнал, а не гарантия прибыли. Перед сделкой проверь цену и размер риска."""
+Проценты указаны до комиссий. Это информационный сигнал, а не гарантия прибыли."""
 
 
 async def toggle_auto_signals(
@@ -456,6 +458,7 @@ async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
         result["grade"] in {"A", "A+"}
         and result["trend_score"] >= 20
         and result["total_score"] >= 75
+        and result["target_15_20_available"]
     )
 
     signal_key = make_signal_key(result) if is_signal else None

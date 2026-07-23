@@ -173,8 +173,35 @@ def analyze_strategy():
 
     stop_loss = round(support * 0.995, 2)
 
-    take_profit_1 = round(resistance * 0.995, 2)
-    take_profit_2 = round(resistance * 1.02, 2)
+    # Для стратегии небольших спотовых сделок считаем прибыль
+    # от верхней границы первой лимитной зоны. Это консервативнее:
+    # фактическая покупка ниже даст немного лучший результат.
+    planned_entry = buy_zone_1_high
+    safe_resistance = round(resistance * 0.995, 2)
+    available_profit_pct = (
+        (safe_resistance - planned_entry) / planned_entry * 100
+        if safe_resistance > planned_entry
+        else 0.0
+    )
+    target_15_20_available = available_profit_pct >= 1.5
+
+    take_profit_1 = round(
+        min(planned_entry * 1.015, safe_resistance),
+        2,
+    )
+    take_profit_2 = round(
+        min(planned_entry * 1.020, safe_resistance),
+        2,
+    )
+
+    if grade in {"A", "A+"} and not target_15_20_available:
+        grade = "B"
+        decision = "WAIT — до безопасной цели нет запаса 1.5%"
+        warnings.append(
+            "Автосигнал заблокирован: потенциал до сопротивления меньше 1.5%"
+        )
+    elif grade in {"A", "A+"}:
+        decision = "BUY LIMIT — доступна цель примерно 1.5–2%"
 
     return {
         "price": round(price, 2),
@@ -206,4 +233,7 @@ def analyze_strategy():
         "stop_loss": stop_loss,
         "take_profit_1": take_profit_1,
         "take_profit_2": take_profit_2,
+        "planned_entry": planned_entry,
+        "available_profit_pct": round(available_profit_pct, 2),
+        "target_15_20_available": target_15_20_available,
     }
