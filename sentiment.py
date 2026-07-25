@@ -23,12 +23,12 @@ def _request(endpoint, params):
     return data["result"]["list"]
 
 
-def get_funding():
+def get_funding(symbol=None):
     rows = _request(
         "/v5/market/funding/history",
         {
             "category": "linear",
-            "symbol": SYMBOL,
+            "symbol": symbol or SYMBOL,
             "limit": 2,
         },
     )
@@ -39,12 +39,12 @@ def get_funding():
     return float(rows[0]["fundingRate"])
 
 
-def get_open_interest():
+def get_open_interest(symbol=None):
     rows = _request(
         "/v5/market/open-interest",
         {
             "category": "linear",
-            "symbol": SYMBOL,
+            "symbol": symbol or SYMBOL,
             "intervalTime": "4h",
             "limit": 2,
         },
@@ -66,12 +66,12 @@ def get_open_interest():
     }
 
 
-def get_long_short():
+def get_long_short(symbol=None):
     rows = _request(
         "/v5/market/account-ratio",
         {
             "category": "linear",
-            "symbol": SYMBOL,
+            "symbol": symbol or SYMBOL,
             "period": "4h",
             "limit": 1,
         },
@@ -93,10 +93,10 @@ def get_long_short():
     }
 
 
-def get_sentiment():
-    funding = get_funding()
-    oi = get_open_interest()
-    long_short = get_long_short()
+def get_sentiment(symbol=None):
+    funding = get_funding(symbol)
+    oi = get_open_interest(symbol)
+    long_short = get_long_short(symbol)
 
     score = 0
     reasons = []

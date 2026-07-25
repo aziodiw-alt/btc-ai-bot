@@ -3,7 +3,7 @@ import pandas as pd
 from config import BYBIT_BASE_URL, SYMBOL
 
 
-def get_ticker():
+def get_ticker(symbol=None):
     """
     Получить текущую цену BTC.
     """
@@ -12,7 +12,7 @@ def get_ticker():
 
     params = {
         "category": "spot",
-        "symbol": SYMBOL
+        "symbol": symbol or SYMBOL
     }
 
     response = requests.get(url, params=params, timeout=10)
@@ -34,7 +34,7 @@ def get_ticker():
    
 
 
-def get_klines(interval="240", limit=200):
+def get_klines(interval="240", limit=200, symbol=None):
     """
     Получить свечи Bybit и вернуть DataFrame.
     interval:
@@ -46,7 +46,7 @@ def get_klines(interval="240", limit=200):
 
     params = {
         "category": "spot",
-        "symbol": SYMBOL,
+        "symbol": symbol or SYMBOL,
         "interval": interval,
         "limit": limit
     }

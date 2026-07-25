@@ -12,12 +12,12 @@ def calculate_support_resistance(df, lookback=50):
     return support, resistance
 
 
-def analyze_strategy():
-    ticker = get_ticker()
+def analyze_strategy(symbol="BTCUSDT"):
+    ticker = get_ticker(symbol)
     price = float(ticker["price"])
 
-    df_1d = get_klines("D", 250)
-    df_4h = get_klines("240", 250)
+    df_1d = get_klines("D", 250, symbol)
+    df_4h = get_klines("240", 250, symbol)
 
     ind_1d = analyze(df_1d)
     ind_4h = analyze(df_4h)
@@ -27,6 +27,8 @@ def analyze_strategy():
     trend_score = 0
     entry_score = 0
     indicators_score = 0
+    rsi_score = 0
+    macd_score = 0
     reasons = []
     warnings = []
 
@@ -103,25 +105,45 @@ def analyze_strategy():
     # 3. INDICATORS: максимум 10
     # ==========================
 
-    if 45 <= ind_4h["rsi"] <= 62:
-        indicators_score += 5
-        reasons.append("RSI 4H находится в рабочей зоне")
-    elif ind_4h["rsi"] > 70:
-        warnings.append("RSI 4H показывает перегрев")
+    rsi_4h = ind_4h["rsi"]
+
+    if 45 <= rsi_4h <= 62:
+        rsi_score = 5
+        reasons.append("RSI 4H находится в основной рабочей зоне")
+    elif 40 <= rsi_4h < 45:
+        rsi_score = 3
+        reasons.append("RSI 4H восстанавливается из слабой зоны")
+    elif 30 <= rsi_4h < 40:
+        rsi_score = 2
+        warnings.append("RSI 4H слабый, но рынок уже близок к перепроданности")
+    elif 62 < rsi_4h <= 68:
+        rsi_score = 3
+        warnings.append("RSI 4H повышенный, но перегрева пока нет")
+    elif rsi_4h < 30:
+        rsi_score = 1
+        warnings.append("RSI 4H показывает перепроданность и высокий риск")
     else:
-        warnings.append("RSI 4H вне оптимальной зоны")
+        warnings.append("RSI 4H показывает перегрев")
+
+    macd_histogram = ind_4h["macd_histogram"]
+    macd_histogram_previous = ind_4h["macd_histogram_previous"]
 
     if ind_4h["macd"] > ind_4h["macd_signal"]:
-        indicators_score += 5
+        macd_score = 5
         reasons.append("MACD 4H бычий")
+    elif macd_histogram > macd_histogram_previous:
+        macd_score = 2
+        reasons.append("MACD 4H ещё слабый, но импульс улучшается")
     else:
-        warnings.append("MACD 4H пока слабый")
+        warnings.append("MACD 4H слабый и пока не улучшается")
+
+    indicators_score = rsi_score + macd_score
 
     # ==========================
     # 4. SENTIMENT: максимум 30
     # ==========================
 
-    sentiment = get_sentiment()
+    sentiment = get_sentiment(symbol)
     sentiment_score = sentiment["sentiment_score"]
 
     reasons.extend(sentiment["reasons"])
@@ -204,6 +226,11 @@ def analyze_strategy():
         decision = "BUY LIMIT — доступна цель примерно 1.5–2%"
 
     return {
+        "symbol": symbol,
+        "display_symbol": symbol.replace("USDT", "/USDT"),
+        "asset": symbol.replace("USDT", ""),
+        "strategy_key": "swing",
+        "strategy_name": "Swing",
         "price": round(price, 2),
         "support": round(support, 2),
         "resistance": round(resistance, 2),
@@ -213,12 +240,16 @@ def analyze_strategy():
         "trend_score": trend_score,
         "entry_score": entry_score,
         "indicators_score": indicators_score,
+        "rsi_score": rsi_score,
+        "macd_score": macd_score,
         "sentiment_score": sentiment_score,
         "total_score": total_score,
         "score_max": 100,
         "grade": grade,
         "decision": decision,
         "rsi_4h": round(ind_4h["rsi"], 2),
+        "macd_4h": round(ind_4h["macd"], 2),
+        "macd_signal_4h": round(ind_4h["macd_signal"], 2),
         "funding_pct": round(sentiment["funding_pct"], 5),
         "long_short_ratio": round(
             sentiment["long_short_ratio"], 3
