@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import tempfile
 
@@ -35,7 +36,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 keyboard = ReplyKeyboardMarkup(
     [
-        ["📊 Анализ BTC"],
+        ["📊 Анализ BTC", "📊 Анализ ETH"],
         ["🟢 Записать покупку", "🔴 Записать продажу"],
         ["📋 Открытая сделка", "📈 Статистика"],
         ["📥 Импорт CSV Bybit"],
@@ -59,12 +60,14 @@ def format_zone(zone):
 
 
 def format_analysis(result):
+    display_symbol = result.get("display_symbol", "BTC/USDT")
+    price_decimals = 2 if display_symbol.startswith("ETH") else 0
     reasons = "\n".join(f"• {item}" for item in result.get("reasons", []))
     warnings = "\n".join(f"• {item}" for item in result.get("warnings", []))
 
-    return f"""📊 BTC/USDT
+    return f"""📊 {display_symbol}
 
-💰 Цена: {format_number(result["price"])}
+💰 Цена: {format_number(result["price"], price_decimals)}
 
 📈 Trend: {result["trend_score"]}/40
 🎯 Entry: {result["entry_score"]}/20
@@ -99,11 +102,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
-async def analyze_btc(update):
+async def analyze_asset(update, symbol):
+    display_symbol = symbol.replace("USDT", "/USDT")
     await update.message.reply_text(
-        "Получаю данные Bybit и считаю индикаторы... ⏳"
+        f"Получаю данные {display_symbol} с Bybit и считаю индикаторы... ⏳"
     )
-    result = await asyncio.to_thread(analyze_strategy)
+    result = await asyncio.to_thread(analyze_strategy, symbol)
     await update.message.reply_text(format_analysis(result), reply_markup=keyboard)
 
     await update.message.reply_text("Готовлю AI-комментарий... 🤖")
@@ -396,20 +400,25 @@ Win Rate: {stats["win_rate"]:.1f}%
 def make_signal_key(result):
     """Создаёт устойчивый ключ сигнала для защиты от повторных уведомлений."""
     zone = sorted(result["buy_zone_1"])
+    symbol = result.get("symbol", "BTCUSDT")
+    decimals = 1 if symbol == "ETHUSDT" else 0
     return (
+        f'{symbol}:'
         f'{result["grade"]}:'
-        f'{round(zone[0], -2):.0f}:'
-        f'{round(zone[1], -2):.0f}:'
+        f'{zone[0]:.{decimals}f}:'
+        f'{zone[1]:.{decimals}f}:'
         f'{int(result["total_score"]) // 5}'
     )
 
 
 def format_auto_signal(result):
-    return f"""🔔 АВТОСИГНАЛ BTC/USDT
+    display_symbol = result.get("display_symbol", "BTC/USDT")
+    price_decimals = 2 if display_symbol.startswith("ETH") else 0
+    return f"""🔔 АВТОСИГНАЛ {display_symbol}
 
 ⭐ Качество: {result["grade"]}
 🏆 Оценка: {result["total_score"]}/100
-💰 Текущая цена: {format_number(result["price"])}
+💰 Текущая цена: {format_number(result["price"], price_decimals)}
 
 🤖 Решение стратегии:
 {result["decision"]}
@@ -434,7 +443,7 @@ async def toggle_auto_signals(
     if enabled:
         text = (
             "🔔 Автоматические сигналы включены.\n\n"
-            "Бот проверяет рынок каждые 15 минут и присылает новый сигнал "
+            "Бот проверяет BTC/USDT и ETH/USDT каждые 15 минут и присылает новый сигнал "
             "только при оценке A или A+."
         )
     else:
@@ -448,42 +457,65 @@ async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
     if not subscribers:
         return
 
-    try:
-        result = await asyncio.to_thread(analyze_strategy)
-    except Exception as error:
-        print(f"Ошибка автоматической проверки рынка: {error}")
-        return
-
-    is_signal = (
-        result["grade"] in {"A", "A+"}
-        and result["trend_score"] >= 20
-        and result["total_score"] >= 75
-        and result["target_15_20_available"]
+    symbols = ("BTCUSDT", "ETHUSDT")
+    analyses = await asyncio.gather(
+        *(
+            asyncio.to_thread(analyze_strategy, symbol)
+            for symbol in symbols
+        ),
+        return_exceptions=True,
     )
 
-    signal_key = make_signal_key(result) if is_signal else None
-
-    for subscriber in subscribers:
-        chat_id = subscriber["telegram_chat_id"]
-        previous_key = subscriber["last_signal_key"]
-
-        if not is_signal:
-            if previous_key is not None:
-                set_last_signal_key(chat_id, None)
-            continue
-
-        if previous_key == signal_key:
-            continue
-
-        try:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=format_auto_signal(result),
-                reply_markup=keyboard,
+    for symbol, result in zip(symbols, analyses):
+        if isinstance(result, Exception):
+            print(
+                f"Ошибка автоматической проверки {symbol}: {result}"
             )
-            set_last_signal_key(chat_id, signal_key)
-        except Exception as error:
-            print(f"Не удалось отправить сигнал в чат {chat_id}: {error}")
+            continue
+
+        is_signal = (
+            result["grade"] in {"A", "A+"}
+            and result["trend_score"] >= 20
+            and result["total_score"] >= 75
+            and result["target_15_20_available"]
+        )
+        signal_key = make_signal_key(result) if is_signal else None
+
+        for subscriber in subscribers:
+            chat_id = subscriber["telegram_chat_id"]
+            previous_keys = {}
+            raw_state = subscriber["last_signal_key"]
+
+            if raw_state:
+                try:
+                    parsed_state = json.loads(raw_state)
+                    if isinstance(parsed_state, dict):
+                        previous_keys = parsed_state
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    previous_keys = {}
+
+            previous_key = previous_keys.get(symbol)
+
+            if not is_signal:
+                if previous_key is not None:
+                    set_last_signal_key(chat_id, None, symbol)
+                continue
+
+            if previous_key == signal_key:
+                continue
+
+            try:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=format_auto_signal(result),
+                    reply_markup=keyboard,
+                )
+                set_last_signal_key(chat_id, signal_key, symbol)
+            except Exception as error:
+                print(
+                    f"Не удалось отправить сигнал {symbol} "
+                    f"в чат {chat_id}: {error}"
+                )
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -496,7 +528,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif context.user_data.get("awaiting_buy_amount"):
             await save_buy_amount(update, context, text)
         elif "анализ btc" in normalized:
-            await analyze_btc(update)
+            await analyze_asset(update, "BTCUSDT")
+        elif "анализ eth" in normalized:
+            await analyze_asset(update, "ETHUSDT")
         elif "записать покупку" in normalized:
             await request_buy(update, context)
         elif "записать продажу" in normalized:
@@ -542,7 +576,7 @@ def main():
         check_auto_signals,
         interval=15 * 60,
         first=30,
-        name="btc_auto_signals",
+        name="btc_eth_auto_signals",
     )
 
     print("Бот запущен...")

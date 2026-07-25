@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -416,16 +417,53 @@ def get_signal_subscribers():
         ).fetchall()
 
 
-def set_last_signal_key(telegram_chat_id, signal_key):
-    """Запоминает последний сигнал, чтобы не отправлять его повторно."""
+def set_last_signal_key(
+    telegram_chat_id,
+    signal_key,
+    symbol="BTCUSDT",
+):
+    """Stores independent anti-duplicate keys for every market symbol."""
     now = datetime.now(timezone.utc).isoformat()
 
     with _connect() as connection:
+        row = connection.execute(
+            """
+            SELECT last_signal_key
+            FROM signal_subscribers
+            WHERE telegram_chat_id = ?
+            """,
+            (telegram_chat_id,),
+        ).fetchone()
+
+        state = {}
+        raw_state = row["last_signal_key"] if row else None
+
+        if raw_state:
+            try:
+                parsed = json.loads(raw_state)
+                if isinstance(parsed, dict):
+                    state = parsed
+            except (TypeError, ValueError, json.JSONDecodeError):
+                state = {}
+
+        normalized_symbol = str(symbol).replace("/", "").upper()
+
+        if signal_key is None:
+            state.pop(normalized_symbol, None)
+        else:
+            state[normalized_symbol] = str(signal_key)
+
+        serialized_state = (
+            json.dumps(state, ensure_ascii=False, sort_keys=True)
+            if state
+            else None
+        )
+
         connection.execute(
             """
             UPDATE signal_subscribers
             SET last_signal_key = ?, updated_at = ?
             WHERE telegram_chat_id = ?
             """,
-            (signal_key, now, telegram_chat_id),
+            (serialized_state, now, telegram_chat_id),
         )
