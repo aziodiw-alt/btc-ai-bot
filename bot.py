@@ -4,7 +4,12 @@ import os
 import tempfile
 
 from dotenv import load_dotenv
-from telegram import ReplyKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    Update,
+)
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -34,11 +39,13 @@ from web.dashboard_trades import get_pending_orders, get_trades
 
 load_dotenv()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+DASHBOARD_URL = os.getenv("DASHBOARD_URL", "").strip()
 
 keyboard = ReplyKeyboardMarkup(
     [
         ["📊 Анализ BTC", "📊 Анализ ETH"],
         ["📋 Открытые ордера", "📈 Статистика"],
+        ["🌐 Открыть Dashboard"],
         ["🔔 Автосигналы ВКЛ/ВЫКЛ"],
     ],
     resize_keyboard=True,
@@ -232,6 +239,28 @@ Win Rate: {float(stats["win_rate"]):.1f}%"""
         f"\nЗакрытых циклов всего: {portfolio_closed}"
     )
     await update.message.reply_text(text, reply_markup=keyboard)
+
+
+async def show_dashboard_link(update: Update):
+    if not DASHBOARD_URL:
+        await update.message.reply_text(
+            "Адрес Dashboard ещё не настроен. "
+            "Добавь переменную DASHBOARD_URL в Railway.",
+            reply_markup=keyboard,
+        )
+        return
+
+    dashboard_url = DASHBOARD_URL
+    if not dashboard_url.startswith(("https://", "http://")):
+        dashboard_url = f"https://{dashboard_url}"
+
+    link_keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("🌐 Открыть Dashboard", url=dashboard_url)]]
+    )
+    await update.message.reply_text(
+        "Нажми кнопку ниже, чтобы открыть личный кабинет:",
+        reply_markup=link_keyboard,
+    )
 
 
 async def request_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -647,6 +676,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_dashboard_orders(update)
         elif "статистика" in normalized:
             await show_dashboard_statistics(update)
+        elif "открыть dashboard" in normalized:
+            await show_dashboard_link(update)
         elif "автосигналы" in normalized:
             await toggle_auto_signals(update, context)
         else:
