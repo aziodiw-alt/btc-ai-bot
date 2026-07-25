@@ -19,6 +19,9 @@ def analyze(df):
     ema200 = EMAIndicator(close, window=200).ema_indicator().iloc[-1]
 
     macd = MACD(close)
+    macd_line = macd.macd()
+    macd_signal_line = macd.macd_signal()
+    macd_histogram = macd_line - macd_signal_line
 
     atr = AverageTrueRange(
         high,
@@ -31,7 +34,9 @@ def analyze(df):
     "ema20": float(round(ema20, 2)),
     "ema50": float(round(ema50, 2)),
     "ema200": float(round(ema200, 2)),
-    "macd": float(round(macd.macd().iloc[-1], 2)),
-    "macd_signal": float(round(macd.macd_signal().iloc[-1], 2)),
+    "macd": float(round(macd_line.iloc[-1], 2)),
+    "macd_signal": float(round(macd_signal_line.iloc[-1], 2)),
+    "macd_histogram": float(round(macd_histogram.iloc[-1], 2)),
+    "macd_histogram_previous": float(round(macd_histogram.iloc[-2], 2)),
     "atr": float(round(atr, 2))
     }
