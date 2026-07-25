@@ -29,6 +29,7 @@ from database import (
 from market import get_ticker
 from strategy import analyze_strategy
 from trade_import import import_bybit_csv
+from web.dashboard_trades import get_pending_orders, get_trades
 
 
 load_dotenv()
@@ -37,6 +38,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 keyboard = ReplyKeyboardMarkup(
     [
         ["📊 Анализ BTC", "📊 Анализ ETH"],
+        ["📋 Открытые ордера", "📈 Статистика"],
         ["🔔 Автосигналы ВКЛ/ВЫКЛ"],
     ],
     resize_keyboard=True,
@@ -112,6 +114,124 @@ async def analyze_asset(update, symbol):
         f"🤖 AI-комментарий:\n\n{ai_text}",
         reply_markup=keyboard,
     )
+
+
+async def show_dashboard_orders(update: Update):
+    blocks = []
+
+    for symbol in ("BTCUSDT", "ETHUSDT"):
+        ticker = await asyncio.to_thread(get_ticker, symbol)
+        current_price = float(ticker["price"])
+        orders = await asyncio.to_thread(
+            get_pending_orders,
+            current_price,
+            100,
+            symbol,
+        )
+        orders = [
+            order
+            for order in orders
+            if str(order.get("status", "")).upper() == "OPEN"
+        ]
+
+        if not orders:
+            continue
+
+        display_symbol = symbol.replace("USDT", "/USDT")
+        price_decimals = 2 if symbol == "ETHUSDT" else 0
+        lines = [f"📋 {display_symbol} — {len(orders)}"]
+
+        for order in orders:
+            side = str(order.get("side", "")).upper()
+            side_icon = "🟢" if side == "BUY" else "🔴"
+            quantity = float(order.get("order_quantity") or 0)
+            price = float(order.get("order_price") or 0)
+            value = float(order.get("order_value") or price * quantity)
+            distance = order.get("distance_pct")
+            strategy = order.get("strategy_key")
+            confidence = order.get("strategy_confidence")
+
+            details = [
+                f"{side_icon} {side}",
+                f"Цена: {format_number(price, price_decimals)}",
+                f"Количество: {quantity:.8f}",
+                f"Сумма: {format_number(value, 2)} USDT",
+            ]
+
+            if distance is not None:
+                details.append(f"До исполнения: {float(distance):.2f}%")
+
+            if strategy:
+                strategy_text = str(strategy).title()
+                if confidence is not None:
+                    strategy_text += f" · {int(confidence)}%"
+                details.append(f"Стратегия: {strategy_text}")
+
+            estimated_profit = order.get("estimated_profit_usdt")
+            estimated_profit_pct = order.get("estimated_profit_pct")
+            if estimated_profit is not None:
+                details.append(
+                    "Ожидаемый результат: "
+                    f"{float(estimated_profit):+.2f} USDT "
+                    f"({float(estimated_profit_pct):+.2f}%)"
+                )
+
+            order_id = order.get("order_id")
+            if order_id:
+                details.append(f"Order ID: {order_id}")
+
+            lines.append("\n".join(details))
+
+        blocks.append("\n\n".join(lines))
+
+    if not blocks:
+        text = "📋 Открытых ордеров BTC/USDT и ETH/USDT сейчас нет."
+    else:
+        text = "\n\n────────────\n\n".join(blocks)
+
+    await update.message.reply_text(text, reply_markup=keyboard)
+
+
+async def show_dashboard_statistics(update: Update):
+    blocks = []
+    portfolio_profit = 0.0
+    portfolio_closed = 0
+
+    for symbol in ("BTCUSDT", "ETHUSDT"):
+        ticker = await asyncio.to_thread(get_ticker, symbol)
+        current_price = float(ticker["price"])
+        data = await asyncio.to_thread(
+            get_trades,
+            current_price,
+            100,
+            symbol,
+        )
+        stats = data["stats"]
+        bybit = data["bybit"]
+        display_symbol = symbol.replace("USDT", "/USDT")
+
+        portfolio_profit += float(stats["closed_profit_usdt"])
+        portfolio_closed += int(stats["closed_count"])
+
+        blocks.append(
+            f"""📊 {display_symbol}
+
+Исполнений: {int(bybit["execution_count"])}
+Закрытых циклов: {int(stats["closed_count"])}
+Открытых позиций: {int(stats["open_count"])}
+Стоимость открытых позиций: {float(stats["open_value_usdt"]):.2f} USDT
+Результат закрытых сделок: {float(stats["closed_profit_usdt"]):+.2f} USDT
+Win Rate: {float(stats["win_rate"]):.1f}%"""
+        )
+
+    text = (
+        "📈 Статистика Dashboard\n\n"
+        + "\n\n────────────\n\n".join(blocks)
+        + f"\n\n💼 Общий результат закрытых сделок: "
+        f"{portfolio_profit:+.2f} USDT"
+        f"\nЗакрытых циклов всего: {portfolio_closed}"
+    )
+    await update.message.reply_text(text, reply_markup=keyboard)
 
 
 async def request_buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -523,11 +643,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await analyze_asset(update, "BTCUSDT")
         elif "анализ eth" in normalized:
             await analyze_asset(update, "ETHUSDT")
+        elif "открытые ордера" in normalized:
+            await show_dashboard_orders(update)
+        elif "статистика" in normalized:
+            await show_dashboard_statistics(update)
         elif "автосигналы" in normalized:
             await toggle_auto_signals(update, context)
         else:
             await update.message.reply_text(
-                "Выбери анализ BTC/ETH или настрой автосигналы.",
+                "Выбери действие на клавиатуре.",
                 reply_markup=keyboard,
             )
     except Exception as error:
