@@ -4,4 +4,7 @@ __pycache__/
 .venv/
 venv/
 node_modules/
-trades.db
+*.db
+*.db-shm
+*.db-wal
+web/data/

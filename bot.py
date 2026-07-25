@@ -37,10 +37,6 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 keyboard = ReplyKeyboardMarkup(
     [
         ["📊 Анализ BTC", "📊 Анализ ETH"],
-        ["🟢 Записать покупку", "🔴 Записать продажу"],
-        ["📋 Открытая сделка", "📈 Статистика"],
-        ["📥 Импорт CSV Bybit"],
-        ["🗑 Очистить импорт CSV"],
         ["🔔 Автосигналы ВКЛ/ВЫКЛ"],
     ],
     resize_keyboard=True,
@@ -523,31 +519,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     normalized = text.lower()
 
     try:
-        if context.user_data.get("awaiting_clear_csv_confirmation"):
-            await confirm_clear_csv(update, context, text)
-        elif context.user_data.get("awaiting_buy_amount"):
-            await save_buy_amount(update, context, text)
-        elif "анализ btc" in normalized:
+        if "анализ btc" in normalized:
             await analyze_asset(update, "BTCUSDT")
         elif "анализ eth" in normalized:
             await analyze_asset(update, "ETHUSDT")
-        elif "записать покупку" in normalized:
-            await request_buy(update, context)
-        elif "записать продажу" in normalized:
-            await sell_trade(update)
-        elif "открытая сделка" in normalized:
-            await show_open_trade(update)
-        elif "статистика" in normalized:
-            await show_statistics(update)
         elif "автосигналы" in normalized:
             await toggle_auto_signals(update, context)
-        elif "очистить импорт csv" in normalized:
-            await request_clear_csv(update, context)
-        elif "импорт csv" in normalized:
-            await request_csv(update)
         else:
             await update.message.reply_text(
-                "Выбери действие кнопкой ниже.",
+                "Выбери анализ BTC/ETH или настрой автосигналы.",
                 reply_markup=keyboard,
             )
     except Exception as error:
@@ -566,9 +546,6 @@ def main():
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(
-        MessageHandler(filters.Document.FileExtension("csv"), handle_csv)
-    )
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text)
     )

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ asset_info["asset"] }} AI Dashboard</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+    <main class="container">
+        <div class="dashboard-title-row">
+            <div>
+                <h1>{{ asset_info["icon"] }} {{ asset_info["asset"] }} AI Dashboard</h1>
+                <p class="strategy-description">
+                    {{ result.get("strategy_description", "") if result else "" }}
+                </p>
+            </div>
+
+            <div class="dashboard-switchers">
+                <nav class="asset-switcher" aria-label="Выбор валюты">
+                    {% for asset in supported_symbols %}
+                        <a
+                            class="asset-button {{ 'is-active' if asset['symbol'] == active_symbol else '' }}"
+                            href="{{ url_for('home', symbol=asset['symbol'], strategy=active_strategy) }}"
+                        >
+                            {{ asset["icon"] }} {{ asset["asset"] }}
+                        </a>
+                    {% endfor %}
+                </nav>
+
+            <nav class="strategy-switcher" aria-label="Выбор стратегии">
+                <a
+                    class="strategy-button {{ 'is-active' if active_strategy == 'swing' else '' }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='swing') }}"
+                >
+                    Swing
+                    <small>1D + 4H</small>
+                </a>
+                <a
+                    class="strategy-button strategy-fast {{ 'is-active' if active_strategy == 'fast' else '' }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='fast') }}"
+                >
+                    Fast
+                    <small>4H + 1H · тест</small>
+                </a>
+            </nav>
+            </div>
+        </div>
+
+        {% if error %}
+            <div class="error">
+                Ошибка анализа: {{ error }}
+            </div>
+        {% elif result %}
+            {% set decision_upper = result["decision"]|upper %}
+            {% set grade_upper = result["grade"]|upper %}
+            {% set is_skip = "SKIP" in decision_upper or grade_upper in ["SKIP", "C"] %}
+            {% set is_wait = not is_skip and ("WAIT" in decision_upper or grade_upper in ["WAIT", "B"]) %}
+            <section>
+                <div class="cards">
+                    <div class="card price-card">
+                        <div class="price-card-symbol">
+                            <span class="price-card-icon">{{ asset_info["icon"] }}</span>
+                            <div>
+                                <div class="label">Цена {{ asset_info["asset"] }}</div>
+                                <small>{{ asset_info["display"] }}</small>
+                            </div>
+                        </div>
+                        <div id="btc-price" class="value price-card-value">
+                            {% if active_symbol == "BTCUSDT" %}
+                                {{ "{:,.1f}".format(result["price"]).replace(",", " ") }}
+                            {% else %}
+                                {{ "{:,.2f}".format(result["price"]).replace(",", " ") }}
+                            {% endif %}
+                        </div>
+                        <span class="price-card-quote">USDT</span>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">Grade</div>
+                        <div class="value
+                            {% if is_skip %}
+                                status-skip
+                            {% elif is_wait %}
+                                status-wait
+                            {% else %}
+                                status-buy
+                            {% endif %}
+                        ">
+                            {{ result["grade"] }}
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">Итоговый Score</div>
+                        <div class="value">{{ result["total_score"] }}/100</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">Trend</div>
+                        <div class="value">{{ result["trend_score"] }}/{{ result.get("trend_max", 40) }}</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">Entry</div>
+                        <div class="value">{{ result["entry_score"] }}/{{ result.get("entry_max", 20) }}</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">Indicators</div>
+                        <div class="value">{{ result["indicators_score"] }}/{{ result.get("indicators_max", 10) }}</div>
+                        <div class="score-breakdown">
+                            RSI {{ result.get("rsi_score", 0) }}/{{ result.get("rsi_max", 5) }} ·
+                            MACD {{ result.get("macd_score", 0) }}/{{ result.get("macd_max", 5) }}
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">Sentiment</div>
+                        <div class="value">{{ result["sentiment_score"] }}/{{ result.get("sentiment_max", 30) }}</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">{{ result.get("rsi_label", "RSI 4H") }}</div>
+                        <div class="value">{{ result["rsi_4h"] }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="workspace">
+                <div class="chart-panel">
+                    <div class="chart-heading">
+                        <h2 class="section-title">
+                            График {{ asset_info["display"] }} · <span id="chart-timeframe-label">{{ "1H" if active_strategy == "fast" else "4H" }}</span>
+                        </h2>
+
+                        <div class="timeframe-switcher" aria-label="Таймфрейм графика">
+                            <button
+                                class="timeframe-button"
+                                type="button"
+                                data-timeframe="D"
+                                data-label="1D"
+                            >
+                                1D
+                            </button>
+                            <button
+                                class="timeframe-button {{ 'is-active' if active_strategy == 'swing' else '' }}"
+                                type="button"
+                                data-timeframe="240"
+                                data-label="4H"
+                            >
+                                4H
+                            </button>
+                            <button
+                                class="timeframe-button {{ 'is-active' if active_strategy == 'fast' else '' }}"
+                                type="button"
+                                data-timeframe="60"
+                                data-label="1H"
+                            >
+                                1H
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="live-status" aria-live="polite">
+                        <span class="live-dot"></span>
+                        <span id="chart-update-status">Автообновление каждые 30 сек.</span>
+                    </div>
+
+                    <div class="chart-container">
+                        <div
+                            id="btc-chart"
+                            class="btc-chart"
+                            data-api-url="{{ url_for('chart_data') }}"
+                            data-strategy="{{ active_strategy }}"
+                            data-symbol="{{ active_symbol }}"
+                            data-default-timeframe="{{ '60' if active_strategy == 'fast' else '240' }}"
+                            data-default-timeframe-label="{{ '1H' if active_strategy == 'fast' else '4H' }}"
+                        ></div>
+                        <div id="chart-loading" class="chart-loading">
+                            Загружаем свечи и уровни…
+                        </div>
+                    </div>
+
+                    <div class="chart-legend" aria-label="Обозначения графика">
+                        <span><i class="legend-dot support"></i>Поддержка</span>
+                        <span><i class="legend-dot resistance"></i>Сопротивление</span>
+                        <span><i class="legend-dot buy"></i>Зоны покупки</span>
+                        <span><i class="legend-dot target"></i>TP / SL</span>
+                    </div>
+                </div>
+
+                <div
+                    id="workspace-resizer"
+                    class="workspace-resizer"
+                    role="separator"
+                    aria-label="Изменить ширину панели торговых уровней"
+                    aria-orientation="vertical"
+                    tabindex="0"
+                    title="Потяните мышкой. Двойной клик — вернуть размер."
+                ></div>
+
+                <aside class="strategy-panel">
+                    <div class="decision
+                        {% if is_skip %}
+                            decision-skip
+                        {% elif is_wait %}
+                            decision-wait
+                        {% else %}
+                            decision-buy
+                        {% endif %}
+                    ">
+                        <div class="label">Решение стратегии</div>
+                        <div class="decision-value
+                            {% if is_skip %}
+                                status-skip
+                            {% elif is_wait %}
+                                status-wait
+                            {% else %}
+                                status-buy
+                            {% endif %}
+                        ">
+                            {{ result["decision"] }}
+                        </div>
+                    </div>
+
+                    <h2 class="section-title">Торговые уровни</h2>
+
+                    <div class="levels">
+                        <div class="card level-card level-buy">
+                            <div class="label">Buy Zone 1</div>
+                            <div class="value level-value">
+                                {{ "{:,.0f}".format(result["buy_zone_1"][0]).replace(",", " ") }}
+                                –
+                                {{ "{:,.0f}".format(result["buy_zone_1"][1]).replace(",", " ") }}
+                            </div>
+                        </div>
+
+                        <div class="card level-card level-buy-secondary">
+                            <div class="label">Buy Zone 2</div>
+                            <div class="value level-value">
+                                {{ "{:,.0f}".format(result["buy_zone_2"][0]).replace(",", " ") }}
+                                –
+                                {{ "{:,.0f}".format(result["buy_zone_2"][1]).replace(",", " ") }}
+                            </div>
+                        </div>
+
+                        <div class="card level-card level-stop">
+                            <div class="label">Stop Loss</div>
+                            <div class="value level-value">
+                                {{ "{:,.0f}".format(result["stop_loss"]).replace(",", " ") }}
+                            </div>
+                        </div>
+
+                        <div class="card level-card level-target">
+                            <div class="label">Take Profit 1</div>
+                            <div class="value level-value">
+                                {{ "{:,.0f}".format(result["take_profit_1"]).replace(",", " ") }}
+                            </div>
+                        </div>
+
+                        <div class="card level-card level-target-strong">
+                            <div class="label">Take Profit 2</div>
+                            <div class="value level-value">
+                                {{ "{:,.0f}".format(result["take_profit_2"]).replace(",", " ") }}
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </section>
+
+            <section id="open-orders" class="open-orders-panel open-orders-below-chart">
+                <div class="open-orders-heading">
+                    <div>
+                        <h2 class="section-title">Открытые ордера</h2>
+                        <p class="section-description">
+                            Активные лимитные ордера Bybit, ожидающие исполнения.
+                        </p>
+                    </div>
+                    <a class="trade-submit section-link" href="{{ url_for('orders_page', symbol=active_symbol) }}">
+                        Загрузить скрин или строку
+                    </a>
+                </div>
+
+                {% if order_filled %}
+                    <div class="form-message form-success">
+                        Ордер отмечен исполненным. Статистика обновлена.
+                    </div>
+                {% endif %}
+
+                {% if order_cancelled %}
+                    <div class="form-message form-success">
+                        Ордер отмечен отменённым и убран из списка открытых.
+                    </div>
+                {% endif %}
+
+                {% if order_fill_error %}
+                    <div class="form-message form-error">
+                        Не удалось изменить ордер: {{ order_fill_error }}
+                    </div>
+                {% endif %}
+
+                <div class="open-order-summary">
+                    <div class="open-order-summary-card">
+                        <span>Открытых ордеров</span>
+                        <strong>{{ open_order_summary["count"] }}</strong>
+                        <small>
+                            BUY: {{ open_order_summary["buy_count"] }} ·
+                            SELL: {{ open_order_summary["sell_count"] }}
+                        </small>
+                    </div>
+                    <div class="open-order-summary-card">
+                        <span>Ожидают покупки</span>
+                        <strong>
+                            {{ "%.2f"|format(open_order_summary["buy_value"]) }} USDT
+                        </strong>
+                    </div>
+                    <div class="open-order-summary-card">
+                        <span>Выставлено на продажу</span>
+                        <strong>
+                            {{ "%.2f"|format(open_order_summary["sell_value"]) }} USDT
+                        </strong>
+                    </div>
+                    <div class="open-order-summary-card">
+                        <span>Ожидаемая чистая прибыль</span>
+                        {% if open_order_summary["expected_profit_pct"] is not none %}
+                            <strong class="{{ 'status-buy' if open_order_summary['expected_profit'] >= 0 else 'status-skip' }}">
+                                {{ "{:+.2f}".format(open_order_summary["expected_profit"]) }} USDT
+                            </strong>
+                            <small>
+                                {{ "{:+.2f}".format(open_order_summary["expected_profit_pct"]) }}%
+                                · рассчитано SELL: {{ open_order_summary["calculated_sell_count"] }}
+                            </small>
+                        {% else %}
+                            <strong>—</strong>
+                            <small>Нет связанной исполненной покупки</small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <p class="table-resize-hint">
+                    ↔ Ширину колонок можно менять, потянув границу заголовка. Двойной щелчок сбрасывает размеры.
+                </p>
+                <div class="history-table-scroll">
+                    <table
+                        id="open-orders-table"
+                        class="history-table open-orders-table"
+                        data-symbol="{{ active_symbol }}"
+                    >
+                        <thead>
+                            <tr>
+                                <th>Дата</th>
+                                <th>Сторона</th>
+                                <th>Стратегия</th>
+                                <th>Цена</th>
+                                <th>Количество {{ asset_info["asset"] }}</th>
+                                <th>Сумма</th>
+                                <th>До исполнения</th>
+                                <th>Ожидаемый результат</th>
+                                <th>Order ID</th>
+                                <th>Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in open_orders %}
+                                <tr>
+                                    <td>{{ order["created_at"]|local_datetime }}</td>
+                                    <td class="{{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
+                                        {{ order["side"] }}
+                                    </td>
+                                    <td>
+                                        {% if order["strategy_key"] %}
+                                            <span
+                                                class="order-strategy-badge order-strategy-{{ order['strategy_key'] }}"
+                                                title="{{ order['strategy_reason'] }}"
+                                            >
+                                                {{ "Fast" if order["strategy_key"] == "fast" else "Swing" }}
+                                                · {{ order["strategy_confidence"] }}%
+                                            </span>
+                                        {% else %}
+                                            <span
+                                                class="order-strategy-badge order-strategy-unknown"
+                                                title="{{ order['strategy_reason'] or 'Не удалось определить стратегию' }}"
+                                            >
+                                                Не определена
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ "{:,.0f}".format(order["order_price"]).replace(",", " ") }}</td>
+                                    <td>{{ "%.8f"|format(order["order_quantity"]) }}</td>
+                                    <td>{{ "%.2f"|format(order["order_value"]) }} USDT</td>
+                                    <td>
+                                        {% if order["distance_pct"] is not none %}
+                                            {{ "%.2f"|format(order["distance_pct"]) }}%
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if order["estimated_profit_usdt"] is not none %}
+                                            <span class="{{ 'status-buy' if order['estimated_profit_usdt'] >= 0 else 'status-skip' }}">
+                                                {{ "{:+.2f}".format(order["estimated_profit_usdt"]) }} USDT
+                                                ({{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%)
+                                            </span>
+                                        {% elif order["side"] == "BUY" %}
+                                            <span class="table-muted">После исполнения</span>
+                                        {% else %}
+                                            <span class="table-muted">Нет связанной покупки</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ order["order_id"] or "—" }}</td>
+                                    <td>
+                                        <form
+                                            class="order-fill-form"
+                                            method="post"
+                                            action="{{ url_for('fill_order', order_id=order['id'], symbol=active_symbol, strategy=active_strategy) }}"
+                                            onsubmit="return confirm('Отметить этот ордер исполненным?');"
+                                        >
+                                            <button class="order-filled-button" type="submit">
+                                                Исполнено
+                                            </button>
+                                        </form>
+                                        <form
+                                            class="order-cancel-form"
+                                            method="post"
+                                            action="{{ url_for('cancel_order', order_id=order['id'], symbol=active_symbol, strategy=active_strategy) }}"
+                                            onsubmit="return confirm('Отметить этот ордер отменённым? Он исчезнет из открытых ордеров.');"
+                                        >
+                                            <button class="order-cancelled-button" type="submit">
+                                                Отменён
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td class="history-empty" colspan="10">
+                                        Открытых ордеров пока нет. Загрузите
+                                        скриншот или вставьте строку Bybit.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">Объяснение стратегии</h2>
+
+                <div class="analysis-grid">
+                    <div class="card">
+                        <div class="label">✅ Причины</div>
+                        <ul>
+                            {% for reason in result["reasons"] %}
+                                <li>{{ reason }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">⚠️ Предупреждения</div>
+                        <ul>
+                            {% for warning in result["warnings"] %}
+                                <li>{{ warning }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section
+                id="whale-alert-panel"
+                class="whale-panel"
+                data-api-url="{{ url_for('whale_alerts') }}"
+            >
+                <div class="whale-heading">
+                    <div>
+                        <h2 class="section-title">🐋 Активность китов</h2>
+                        <p class="section-description">
+                            Крупные BTC, USDT и USDC-переводы из публичного канала Whale Alert.
+                        </p>
+                    </div>
+                    <a
+                        class="section-link"
+                        href="https://t.me/whale_alert_io"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Открыть источник
+                    </a>
+                </div>
+
+                <div id="whale-summary" class="whale-summary">
+                    Загружаем последние крупные переводы…
+                </div>
+                <div id="whale-events" class="whale-events"></div>
+                <p class="whale-disclaimer">
+                    Переводы кошельков не гарантируют покупку или продажу и используются только как дополнительный фильтр.
+                </p>
+            </section>
+
+            <section
+                id="crypto-news-panel"
+                class="news-panel"
+                data-api-url="{{ url_for('crypto_news') }}"
+            >
+                <div class="news-heading">
+                    <div>
+                        <h2 class="section-title">📰 Новости рынка</h2>
+                        <p class="section-description">
+                            Последние связанные с BTC новости CryptoNews и предварительная оценка заголовков.
+                        </p>
+                    </div>
+                    <a
+                        class="section-link"
+                        href="https://cryptonews.com/news/bitcoin-news/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Открыть источник
+                    </a>
+                </div>
+
+                <div id="news-summary" class="news-summary">
+                    Загружаем последние новости…
+                </div>
+                <div id="news-list" class="news-list"></div>
+                <p class="news-disclaimer">
+                    Оценка выполняется по заголовкам и не заменяет проверку полного текста новости.
+                </p>
+            </section>
+
+            <section>
+                <div class="ai-heading">
+                    <div>
+                        <h2 class="section-title">AI-комментарий</h2>
+                        <p class="section-description">
+                            AI объединяет техническую стратегию, Whale Alert и CryptoNews, но не изменяет торговое решение.
+                        </p>
+                    </div>
+
+                    <button
+                        id="generate-ai-report"
+                        class="ai-button"
+                        type="button"
+                        data-api-url="{{ url_for('ai_report') }}"
+                        data-strategy="{{ active_strategy }}"
+                    >
+                        Получить AI-комментарий
+                    </button>
+                </div>
+
+                <div id="ai-report-card" class="ai-report-card">
+                    <div id="ai-report-text" class="ai-report-placeholder">
+                        Нажмите кнопку, чтобы получить краткое объяснение текущего анализа.
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">История и статистика</h2>
+
+                <div class="strategy-comparison">
+                    {% for strategy in strategy_comparison %}
+                        <a
+                            class="strategy-comparison-card {{ 'is-active' if strategy['key'] == active_strategy else '' }}"
+                            href="{{ url_for('home', symbol=active_symbol, strategy=strategy['key']) }}"
+                        >
+                            <div class="strategy-comparison-heading">
+                                <strong>{{ strategy["name"] }}</strong>
+                                <span class="
+                                    {% if strategy['latest_grade'] in ['SKIP', 'C'] %}
+                                        status-skip
+                                    {% elif strategy['latest_grade'] in ['WAIT', 'B'] %}
+                                        status-wait
+                                    {% else %}
+                                        status-buy
+                                    {% endif %}
+                                ">
+                                    {{ strategy["latest_grade"] }}
+                                </span>
+                            </div>
+                            <div class="strategy-comparison-score">
+                                {{ strategy["latest_score"] }}/100
+                            </div>
+                            <div class="strategy-comparison-meta">
+                                <span>Средний: {{ "%.1f"|format(strategy["average_score"]) }}</span>
+                                <span>Записей: {{ strategy["total"] }}</span>
+                            </div>
+                            <div class="strategy-comparison-signals">
+                                <span class="status-buy">BUY {{ strategy["buy_count"] }}</span>
+                                <span class="status-wait">WAIT {{ strategy["wait_count"] }}</span>
+                                <span class="status-skip">SKIP {{ strategy["skip_count"] }}</span>
+                            </div>
+                            <small>Последнее обновление: {{ strategy["latest_created_at"] }}</small>
+                        </a>
+                    {% endfor %}
+                </div>
+
+                <div class="history-stats">
+                    <div class="card">
+                        <div class="label">Всего анализов</div>
+                        <div class="value">{{ stats["total"] }}</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">Средний Score</div>
+                        <div class="value">{{ stats["average_score"] }}</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">BUY</div>
+                        <div class="value status-buy">{{ stats["buy_count"] }}</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">WAIT</div>
+                        <div class="value status-wait">{{ stats["wait_count"] }}</div>
+                    </div>
+
+                    <div class="card">
+                        <div class="label">SKIP</div>
+                        <div class="value status-skip">{{ stats["skip_count"] }}</div>
+                    </div>
+                </div>
+
+                <div class="history-table-card">
+                    <div class="history-table-scroll">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Пара</th>
+                                    <th>Цена</th>
+                                    <th>Score</th>
+                                    <th>Grade</th>
+                                    <th>Решение</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in history %}
+                                    <tr>
+                                        <td>{{ item["created_at"] }}</td>
+                                        <td>{{ item["symbol"] }}</td>
+                                        <td>{{ "%.1f"|format(item["price"]) }}</td>
+                                        <td>{{ item["total_score"] }}/100</td>
+                                        <td>
+                                            <span class="history-status history-{{ item['signal_type']|lower }}">
+                                                {{ item["grade"] }}
+                                            </span>
+                                        </td>
+                                        <td>{{ item["decision"] }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td class="history-empty" colspan="6">
+                                            История появится после первого сохранённого анализа.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="trades">
+                <div class="trades-heading">
+                    <div>
+                        <h2 class="section-title">Мои сделки</h2>
+                        <p class="section-description">
+                            Загрузите свежий CSV Bybit сюда. Уже импортированные операции будут пропущены.
+                        </p>
+                    </div>
+                </div>
+
+                {% if trade_added %}
+                    <div class="form-message form-success">
+                        Сделка успешно добавлена.
+                    </div>
+                {% endif %}
+
+                {% if trade_error %}
+                    <div class="form-message form-error">
+                        {{ trade_error }}
+                    </div>
+                {% endif %}
+
+                {% if trade_data_error %}
+                    <div class="form-message form-error">
+                        Сделки Telegram пока недоступны: {{ trade_data_error }}
+                    </div>
+                {% endif %}
+
+                {% if csv_added is not none %}
+                    <div class="form-message form-success">
+                        CSV импортирован. Новых операций: {{ csv_added }}.
+                        Дубликатов пропущено: {{ csv_duplicates }}.
+                        Других пар пропущено: {{ csv_ignored }}.
+                    </div>
+                {% endif %}
+
+                {% if csv_error %}
+                    <div class="form-message form-error">
+                        Ошибка импорта CSV: {{ csv_error }}
+                    </div>
+                {% endif %}
+
+                <form
+                    class="csv-import-form"
+                    method="post"
+                    action="{{ url_for('import_trades_csv') }}"
+                    enctype="multipart/form-data"
+                >
+                    <input type="hidden" name="symbol" value="{{ active_symbol }}">
+                    <div class="form-field">
+                        <label for="csv-file">CSV истории Spot-сделок Bybit</label>
+                        <input
+                            id="csv-file"
+                            name="csv_file"
+                            type="file"
+                            accept=".csv,text/csv"
+                            required
+                        >
+                    </div>
+
+                    <button class="trade-submit" type="submit">
+                        Импортировать CSV
+                    </button>
+                </form>
+
+                <div class="history-stats trade-stats">
+                    <div class="card">
+                        <div class="label">Всего сделок</div>
+                        <div class="value">{{ trade_stats["total"] }}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">Открытых ордеров</div>
+                        <div class="value status-wait">{{ trade_stats["open_count"] }}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">Закрытых</div>
+                        <div class="value">{{ trade_stats["closed_count"] }}</div>
+                    </div>
+                    <div class="card">
+                        <div class="label">Результат, USDT</div>
+                        <div class="value {% if trade_stats['closed_profit_usdt'] >= 0 %}status-buy{% else %}status-skip{% endif %}">
+                            {{ "%+.2f"|format(trade_stats["closed_profit_usdt"]) }}
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="label">Win Rate</div>
+                        <div class="value">{{ "%.1f"|format(trade_stats["win_rate"]) }}%</div>
+                    </div>
+                </div>
+
+                <h3 class="subsection-title">Последние исполнения Bybit CSV</h3>
+
+                <div class="bybit-summary">
+                    <span>Исполнений: <strong>{{ bybit_stats["execution_count"] }}</strong></span>
+                    <span>Остаток: <strong>{{ "%.8f"|format(bybit_stats["open_quantity"]) }} {{ asset_info["asset"] }}</strong></span>
+                    <span>
+                        Несопоставлено продаж:
+                        <strong>{{ "%.8f"|format(bybit_stats["unmatched_sell_quantity"]) }} {{ asset_info["asset"] }}</strong>
+                    </span>
+                </div>
+
+                <h3 class="subsection-title">Завершённые циклы BUY → SELL</h3>
+
+                <div class="history-table-card">
+                    <div class="history-table-scroll">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Покупка</th>
+                                    <th>Продажа</th>
+                                    <th>Цена входа</th>
+                                    <th>Цена выхода</th>
+                                    <th>Количество {{ asset_info["asset"] }}</th>
+                                    <th>Стратегия</th>
+                                    <th>Чистый результат</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cycle in bybit_cycles %}
+                                    <tr>
+                                        <td>{{ cycle["opened_at"]|replace("T", " ") }}</td>
+                                        <td>{{ cycle["closed_at"]|replace("T", " ") }}</td>
+                                        <td>
+                                            {{ "{:,.2f}".format(cycle["entry_price"]).replace(",", " ") }}
+                                        </td>
+                                        <td>
+                                            {{ "{:,.2f}".format(cycle["exit_price"]).replace(",", " ") }}
+                                        </td>
+                                        <td>{{ "%.8f"|format(cycle["quantity"]) }}</td>
+                                        <td>
+                                            {% if cycle["strategy_key"] %}
+                                                <span class="order-strategy-badge order-strategy-{{ cycle['strategy_key'] }}">
+                                                    {% if cycle["strategy_key"] == "fast" %}
+                                                        Fast
+                                                    {% elif cycle["strategy_key"] == "swing" %}
+                                                        Swing
+                                                    {% else %}
+                                                        Смешанная
+                                                    {% endif %}
+                                                    {% if cycle["strategy_confidence"] %}
+                                                        · {{ cycle["strategy_confidence"] }}%
+                                                    {% endif %}
+                                                </span>
+                                            {% else %}
+                                                <span class="order-strategy-badge order-strategy-unknown">
+                                                    Не определена
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="{{ 'status-buy' if cycle['pnl'] >= 0 else 'status-skip' }}">
+                                            {{ "{:+.2f}".format(cycle["pnl"]) }} USDT
+                                            ({{ "{:+.2f}".format(cycle["pnl_pct"]) }}%)
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td class="history-empty" colspan="7">
+                                            Завершённые циклы появятся после импорта исполненных BUY и SELL.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="history-table-card">
+                    <div class="history-table-scroll">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Сторона</th>
+                                    <th>Цена</th>
+                                    <th>Количество {{ asset_info["asset"] }}</th>
+                                    <th>Сумма</th>
+                                    <th>Комиссия</th>
+                                    <th>Стратегия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for execution in bybit_executions %}
+                                    <tr>
+                                        <td>{{ execution["executed_at"]|replace("T", " ") }}</td>
+                                        <td>
+                                            <span class="history-status {% if execution['side'] == 'BUY' %}history-buy{% else %}history-skip{% endif %}">
+                                                {{ execution["side"] }}
+                                            </span>
+                                        </td>
+                                        <td>{{ "%.2f"|format(execution["filled_price"]) }}</td>
+                                        <td>{{ "%.8f"|format(execution["filled_quantity"]) }}</td>
+                                        <td>{{ "%.2f"|format(execution["filled_value"]) }} USDT</td>
+                                        <td>
+                                            {{ "%.8f"|format(execution["fee_amount"]) }}
+                                            {{ execution["fee_coin"] }}
+                                        </td>
+                                        <td>
+                                            {% if execution["strategy_key"] %}
+                                                <span class="order-strategy-badge order-strategy-{{ execution['strategy_key'] }}">
+                                                    {{ "Fast" if execution["strategy_key"] == "fast" else "Swing" }}
+                                                    {% if execution["strategy_confidence"] %}
+                                                        · {{ execution["strategy_confidence"] }}%
+                                                    {% endif %}
+                                                </span>
+                                            {% else %}
+                                                <span class="order-strategy-badge order-strategy-unknown">
+                                                    —
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td class="history-empty" colspan="7">
+                                            Импортируйте CSV через Telegram — данные появятся здесь.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+    </main>
+
+    <script src="https://unpkg.com/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

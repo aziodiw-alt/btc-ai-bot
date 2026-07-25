@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка ордеров — BTC AI Dashboard</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+<body>
+    <main class="container">
+        <div class="page-toolbar">
+            <div>
+                <h1>Проверка распознанных ордеров</h1>
+                <p class="section-description">
+                    Проверьте значения. Сохранение произойдёт только после
+                    нажатия кнопки внизу.
+                </p>
+            </div>
+            <a class="trade-submit section-link" href="{{ url_for('orders_page') }}">
+                Отмена
+            </a>
+        </div>
+
+        {% if parse_error %}
+            <div class="form-message form-error">
+                Ошибка распознавания: {{ parse_error }}
+            </div>
+        {% elif orders %}
+            <form method="post" action="{{ url_for('save_orders') }}">
+                <input type="hidden" name="order_count" value="{{ orders|length }}">
+
+                <div class="order-review-list">
+                    {% for order in orders %}
+                        {% set index = loop.index0 %}
+                        <section class="card order-review-card">
+                            <h2>Ордер {{ loop.index }}</h2>
+
+                            <div class="order-review-grid">
+                                <div class="form-field">
+                                    <label>Пара</label>
+                                    <input name="symbol_{{ index }}" value="{{ order.get('symbol', 'BTCUSDT') }}" required>
+                                </div>
+                                <div class="form-field">
+                                    <label>Сторона</label>
+                                    <select name="side_{{ index }}">
+                                        <option value="BUY" {{ 'selected' if order.get('side') == 'BUY' else '' }}>BUY</option>
+                                        <option value="SELL" {{ 'selected' if order.get('side') == 'SELL' else '' }}>SELL</option>
+                                    </select>
+                                </div>
+                                <div class="form-field">
+                                    <label>Тип</label>
+                                    <input name="order_type_{{ index }}" value="{{ order.get('order_type', 'LIMIT') }}" required>
+                                </div>
+                                <div class="form-field">
+                                    <label>Сумма USDT</label>
+                                    <input name="order_value_{{ index }}" type="number" step="0.00000001" value="{{ order.get('order_value', 0) }}" required>
+                                </div>
+                                <div class="form-field">
+                                    <label>Цена</label>
+                                    <input name="order_price_{{ index }}" type="number" step="0.00000001" value="{{ order.get('order_price', 0) }}" required>
+                                </div>
+                                <div class="form-field">
+                                    <label>Количество BTC</label>
+                                    <input name="order_quantity_{{ index }}" type="number" step="0.00000001" value="{{ order.get('order_quantity', 0) }}" required>
+                                </div>
+                                <div class="form-field">
+                                    <label>Дата</label>
+                                    <input name="created_at_{{ index }}" type="datetime-local" value="{{ order.get('created_at', '') }}" required>
+                                </div>
+                                <div class="form-field">
+                                    <label>Order ID</label>
+                                    <input name="order_id_{{ index }}" value="{{ order.get('order_id', '') }}">
+                                </div>
+                            </div>
+                        </section>
+                    {% endfor %}
+                </div>
+
+                <button class="trade-submit order-save-button" type="submit">
+                    Сохранить проверенные ордера
+                </button>
+            </form>
+        {% endif %}
+    </main>
+</body>
+</html>

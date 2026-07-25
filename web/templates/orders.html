@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Открытые ордера — {{ asset_info.display }} AI Dashboard</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+<body>
+    <main class="container">
+        <div class="page-toolbar">
+            <div>
+                <h1>Открытые ордера</h1>
+                <p class="section-description">
+                    Загрузите скрин Bybit или вставьте скопированную строку.
+                    Перед сохранением вы сможете проверить распознанные данные.
+                </p>
+            </div>
+            <a class="trade-submit section-link" href="{{ url_for('home', symbol=active_symbol) }}">
+                Вернуться в Dashboard
+            </a>
+        </div>
+
+        {% if order_saved is not none %}
+            <div class="form-message form-success">
+                Сохранено ордеров: {{ order_saved }}.
+                Дубликатов пропущено: {{ order_duplicates }}.
+            </div>
+        {% endif %}
+
+        {% if order_error %}
+            <div class="form-message form-error">{{ order_error }}</div>
+        {% endif %}
+
+        {% if orders_error %}
+            <div class="form-message form-error">{{ orders_error }}</div>
+        {% endif %}
+
+        <section class="card order-import-card">
+            <h2 class="section-title">Распознать ордера</h2>
+
+            <form
+                class="order-import-form"
+                method="post"
+                action="{{ url_for('parse_order_input') }}"
+                enctype="multipart/form-data"
+            >
+                <div class="form-field">
+                    <label for="order-image">Скрин открытых ордеров</label>
+                    <input
+                        id="order-image"
+                        name="order_image"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                    >
+                </div>
+
+                <div
+                    id="clipboard-drop-zone"
+                    class="clipboard-drop-zone"
+                    tabindex="0"
+                    role="button"
+                    aria-label="Вставить скриншот из буфера обмена"
+                >
+                    <div class="clipboard-title">
+                        Нажмите сюда и вставьте скрин через Ctrl+V
+                    </div>
+                    <div class="clipboard-hint">
+                        Можно вставлять изображение без сохранения файла.
+                    </div>
+                    <img
+                        id="clipboard-preview"
+                        class="clipboard-preview"
+                        alt="Предварительный просмотр скриншота"
+                        hidden
+                    >
+                </div>
+
+                <div
+                    id="clipboard-status"
+                    class="clipboard-status"
+                    aria-live="polite"
+                ></div>
+
+                <div class="form-field">
+                    <label for="copied-text">Или вставьте скопированную строку</label>
+                    <textarea
+                        id="copied-text"
+                        name="copied_text"
+                        rows="5"
+                        placeholder="Вставьте строку или таблицу из Bybit"
+                    ></textarea>
+                </div>
+
+                <button class="trade-submit" type="submit">
+                    Распознать и проверить
+                </button>
+            </form>
+        </section>
+
+        <section>
+            <h2 class="section-title">Сохранённые ордера</h2>
+            <div class="history-table-wrap">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Сторона</th>
+                            <th>Стратегия</th>
+                            <th>Цена</th>
+                            <th>Количество {{ asset_info.asset }}</th>
+                            <th>Сумма</th>
+                            <th>Order ID</th>
+                            <th>Статус</th>
+                            <th>Действие</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                            <tr>
+                                <td>{{ order["created_at"]|local_datetime }}</td>
+                                <td class="{{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
+                                    {{ order["side"] }}
+                                </td>
+                                <td>
+                                    {% if order["strategy_key"] %}
+                                        <span
+                                            class="order-strategy-badge order-strategy-{{ order['strategy_key'] }}"
+                                            title="{{ order['strategy_reason'] }}"
+                                        >
+                                            {{ "Fast" if order["strategy_key"] == "fast" else "Swing" }}
+                                            · {{ order["strategy_confidence"] }}%
+                                        </span>
+                                    {% else %}
+                                        <span
+                                            class="order-strategy-badge order-strategy-unknown"
+                                            title="{{ order['strategy_reason'] or 'Не удалось определить стратегию' }}"
+                                        >
+                                            Не определена
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ "%.2f"|format(order["order_price"]) }}</td>
+                                <td>{{ "%.8f"|format(order["order_quantity"]) }}</td>
+                                <td>{{ "%.2f"|format(order["order_value"]) }} USDT</td>
+                                <td>{{ order["order_id"] or "—" }}</td>
+                                <td>{{ order["status"] }}</td>
+                                <td>
+                                    {% if order["status"] == "OPEN" %}
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('fill_order', order_id=order['id'], symbol=active_symbol) }}"
+                                            onsubmit="return confirm('Отметить этот ордер исполненным?');"
+                                        >
+                                            <button class="order-filled-button" type="submit">
+                                                Исполнено
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td class="history-empty" colspan="9">
+                                    Открытых ордеров пока нет.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+    <script src="{{ url_for('static', filename='js/orders.js') }}"></script>
+</body>
+</html>
