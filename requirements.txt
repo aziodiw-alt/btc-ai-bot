@@ -7,3 +7,4 @@ numpy
 ta==0.11.0
 Flask
 gunicorn
+cryptography

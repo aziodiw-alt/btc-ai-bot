@@ -47,6 +47,14 @@ processes = [
     subprocess.Popen([sys.executable, "bot.py"]),
 ]
 
+if (
+    os.getenv("BYBIT_API_KEY")
+    and os.getenv("BYBIT_RSA_PRIVATE_KEY_B64")
+):
+    processes.append(
+        subprocess.Popen([sys.executable, "bybit_sync.py"])
+    )
+
 
 def stop_all(*_):
     for process in processes:

@@ -701,6 +701,236 @@ def add_pending_orders(orders, strategy_levels=None):
     return {"saved": saved, "duplicates": duplicates}
 
 
+def sync_bybit_executions(executions, symbol="BTCUSDT"):
+    """Сохраняет исполнения API Bybit и не создаёт дубликаты."""
+    symbol = str(symbol).replace("/", "").upper()
+    added = 0
+    duplicates = 0
+    now = datetime.now(timezone.utc).isoformat()
+
+    with _connect() as connection:
+        telegram_user_id = _resolve_user_id(connection)
+
+        for execution in executions:
+            transaction_id = str(
+                execution.get("transaction_id") or ""
+            ).strip()
+            order_id = str(execution.get("order_id") or "").strip()
+
+            if not transaction_id:
+                continue
+
+            strategy_key = None
+            strategy_confidence = None
+
+            if order_id:
+                pending_order = connection.execute(
+                    """
+                    SELECT strategy_key, strategy_confidence
+                    FROM pending_orders
+                    WHERE telegram_user_id = ? AND order_id = ?
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (telegram_user_id, order_id),
+                ).fetchone()
+
+                if pending_order:
+                    strategy_key = pending_order["strategy_key"]
+                    strategy_confidence = pending_order[
+                        "strategy_confidence"
+                    ]
+
+                connection.execute(
+                    """
+                    DELETE FROM bybit_executions
+                    WHERE telegram_user_id = ?
+                      AND transaction_id LIKE 'MANUAL-ORDER-%'
+                      AND order_id = ?
+                    """,
+                    (telegram_user_id, order_id),
+                )
+
+            cursor = connection.execute(
+                """
+                INSERT OR IGNORE INTO bybit_executions (
+                    telegram_user_id,
+                    transaction_id,
+                    symbol,
+                    side,
+                    order_type,
+                    fee_coin,
+                    fee_amount,
+                    filled_value,
+                    filled_price,
+                    filled_quantity,
+                    order_id,
+                    executed_at,
+                    strategy_key,
+                    strategy_confidence
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    telegram_user_id,
+                    transaction_id,
+                    symbol,
+                    str(execution.get("side") or "").upper(),
+                    str(execution.get("order_type") or "").upper(),
+                    str(execution.get("fee_coin") or "").upper(),
+                    float(execution.get("fee_amount") or 0),
+                    float(execution.get("filled_value") or 0),
+                    float(execution.get("filled_price") or 0),
+                    float(execution.get("filled_quantity") or 0),
+                    order_id,
+                    str(execution.get("executed_at") or now),
+                    strategy_key,
+                    strategy_confidence,
+                ),
+            )
+
+            if cursor.rowcount:
+                added += 1
+            else:
+                duplicates += 1
+
+            if order_id:
+                connection.execute(
+                    """
+                    UPDATE pending_orders
+                    SET status = 'FILLED', updated_at = ?
+                    WHERE telegram_user_id = ? AND order_id = ?
+                    """,
+                    (now, telegram_user_id, order_id),
+                )
+
+    return {
+        "added": added,
+        "duplicates": duplicates,
+        "received": len(executions),
+    }
+
+
+def sync_pending_orders(orders, symbol="BTCUSDT"):
+    """Полностью синхронизирует текущие открытые ордера одного символа."""
+    symbol = str(symbol).replace("/", "").upper()
+    now = datetime.now(timezone.utc).isoformat()
+    active_order_ids = []
+    saved = 0
+    updated = 0
+
+    with _connect() as connection:
+        telegram_user_id = _resolve_user_id(connection)
+
+        for order in orders:
+            order_id = str(order.get("order_id") or "").strip()
+            side = str(order.get("side") or "").upper()
+            price = float(order.get("order_price") or 0)
+            quantity = float(order.get("order_quantity") or 0)
+            value = float(order.get("order_value") or price * quantity)
+
+            if (
+                not order_id
+                or side not in {"BUY", "SELL"}
+                or price <= 0
+                or quantity <= 0
+            ):
+                continue
+
+            active_order_ids.append(order_id)
+            existing = connection.execute(
+                """
+                SELECT id
+                FROM pending_orders
+                WHERE telegram_user_id = ? AND order_id = ?
+                """,
+                (telegram_user_id, order_id),
+            ).fetchone()
+
+            connection.execute(
+                """
+                INSERT INTO pending_orders (
+                    telegram_user_id,
+                    order_id,
+                    symbol,
+                    side,
+                    order_type,
+                    order_value,
+                    order_price,
+                    order_quantity,
+                    created_at,
+                    status,
+                    updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
+                ON CONFLICT(telegram_user_id, order_id)
+                DO UPDATE SET
+                    symbol = excluded.symbol,
+                    side = excluded.side,
+                    order_type = excluded.order_type,
+                    order_value = excluded.order_value,
+                    order_price = excluded.order_price,
+                    order_quantity = excluded.order_quantity,
+                    status = 'OPEN',
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    telegram_user_id,
+                    order_id,
+                    symbol,
+                    side,
+                    str(order.get("order_type") or "LIMIT").upper(),
+                    value,
+                    price,
+                    quantity,
+                    str(order.get("created_at") or now),
+                    now,
+                ),
+            )
+
+            if existing:
+                updated += 1
+            else:
+                saved += 1
+
+        if active_order_ids:
+            placeholders = ",".join("?" for _ in active_order_ids)
+            cursor = connection.execute(
+                f"""
+                UPDATE pending_orders
+                SET status = 'CANCELLED', updated_at = ?
+                WHERE telegram_user_id = ?
+                  AND symbol = ?
+                  AND status = 'OPEN'
+                  AND order_id NOT IN ({placeholders})
+                """,
+                (
+                    now,
+                    telegram_user_id,
+                    symbol,
+                    *active_order_ids,
+                ),
+            )
+        else:
+            cursor = connection.execute(
+                """
+                UPDATE pending_orders
+                SET status = 'CANCELLED', updated_at = ?
+                WHERE telegram_user_id = ?
+                  AND symbol = ?
+                  AND status = 'OPEN'
+                """,
+                (now, telegram_user_id, symbol),
+            )
+
+    return {
+        "open": len(active_order_ids),
+        "saved": saved,
+        "updated": updated,
+        "closed": cursor.rowcount,
+    }
+
+
 def fill_pending_order(pending_order_id):
     """Помечает ордер исполненным и создаёт временное исполнение для статистики."""
     pending_order_id = int(pending_order_id)
