@@ -158,7 +158,7 @@
             {% set is_skip = "SKIP" in decision_upper or grade_upper in ["SKIP", "C"] %}
             {% set is_wait = not is_skip and ("WAIT" in decision_upper or grade_upper in ["WAIT", "B"]) %}
             <section>
-                <div class="cards">
+                <div class="cards analytics-strip">
                     <div class="card price-card">
                         <div class="price-card-symbol">
                             <span class="price-card-icon">{{ asset_info["icon"] }}</span>
@@ -223,12 +223,12 @@
                         <div class="value">{{ result["sentiment_score"] }}/{{ result.get("sentiment_max", 30) }}</div>
                     </div>
 
-                    <div class="card">
+                    <div class="card metric-card grade-card">
                         <div class="label">{{ result.get("rsi_label", "RSI 4H") }}</div>
                         <div class="value">{{ result["rsi_4h"] }}</div>
                     </div>
 
-                    <div class="card">
+                    <div class="card metric-card">
                         <div class="label">Режим рынка</div>
                         <div class="value market-mode market-mode-{{ result.get('market_mode', 'RANGE')|lower }}">
                             {{ result.get("market_mode_label", result.get("market_mode", "—")) }}
@@ -756,7 +756,7 @@
                 <h2 class="section-title">Объяснение стратегии</h2>
 
                 <div class="analysis-grid">
-                    <div class="card">
+                    <div class="card metric-card">
                         <div class="label">✅ Причины</div>
                         <ul>
                             {% for reason in result["reasons"] %}
@@ -765,7 +765,7 @@
                         </ul>
                     </div>
 
-                    <div class="card">
+                    <div class="card metric-card">
                         <div class="label">⚠️ Предупреждения</div>
                         <ul>
                             {% for warning in result["warnings"] %}
@@ -906,22 +906,22 @@
                 </div>
 
                 <div class="history-stats">
-                    <div class="card">
+                    <div class="card metric-card indicators-card">
                         <div class="label">Всего анализов</div>
                         <div class="value">{{ stats["total"] }}</div>
                     </div>
 
-                    <div class="card">
+                    <div class="card metric-card">
                         <div class="label">Средний Score</div>
                         <div class="value">{{ stats["average_score"] }}</div>
                     </div>
 
-                    <div class="card">
+                    <div class="card metric-card">
                         <div class="label">BUY</div>
                         <div class="value status-buy">{{ stats["buy_count"] }}</div>
                     </div>
 
-                    <div class="card">
+                    <div class="card metric-card market-regime-card">
                         <div class="label">WAIT</div>
                         <div class="value status-wait">{{ stats["wait_count"] }}</div>
                     </div>
