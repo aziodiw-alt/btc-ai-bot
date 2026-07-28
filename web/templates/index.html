@@ -380,6 +380,20 @@
                                 –
                                 {{ "{:,.0f}".format(result["buy_zone_1"][1]).replace(",", " ") }}
                             </div>
+                            <div class="level-actions">
+                                <span>
+                                    Средняя:
+                                    <strong id="buy-zone-1-average">
+                                        {{ "{:,.0f}".format((result["buy_zone_1"][0] + result["buy_zone_1"][1]) / 2).replace(",", " ") }}
+                                    </strong>
+                                </span>
+                                <button
+                                    class="copy-level-button"
+                                    type="button"
+                                    data-copy-target="buy-zone-1-average"
+                                    aria-label="Копировать среднюю цену Buy Zone 1"
+                                >Копировать</button>
+                            </div>
                         </div>
 
                         <div class="card level-card level-buy-secondary">
@@ -389,12 +403,34 @@
                                 –
                                 {{ "{:,.0f}".format(result["buy_zone_2"][1]).replace(",", " ") }}
                             </div>
+                            <div class="level-actions">
+                                <span>
+                                    Средняя:
+                                    <strong id="buy-zone-2-average">
+                                        {{ "{:,.0f}".format((result["buy_zone_2"][0] + result["buy_zone_2"][1]) / 2).replace(",", " ") }}
+                                    </strong>
+                                </span>
+                                <button
+                                    class="copy-level-button"
+                                    type="button"
+                                    data-copy-target="buy-zone-2-average"
+                                    aria-label="Копировать среднюю цену Buy Zone 2"
+                                >Копировать</button>
+                            </div>
                         </div>
 
                         <div class="card level-card level-stop">
                             <div class="label">Stop Loss</div>
                             <div id="stop-loss" class="value level-value">
                                 {{ "{:,.0f}".format(result["stop_loss"]).replace(",", " ") }}
+                            </div>
+                            <div class="level-actions level-actions-single">
+                                <span>Точное значение</span>
+                                <button
+                                    class="copy-level-button"
+                                    type="button"
+                                    data-copy-target="stop-loss"
+                                >Копировать</button>
                             </div>
                         </div>
 
@@ -403,12 +439,28 @@
                             <div id="take-profit-1" class="value level-value">
                                 {{ "{:,.0f}".format(result["take_profit_1"]).replace(",", " ") }}
                             </div>
+                            <div class="level-actions level-actions-single">
+                                <span>Точное значение</span>
+                                <button
+                                    class="copy-level-button"
+                                    type="button"
+                                    data-copy-target="take-profit-1"
+                                >Копировать</button>
+                            </div>
                         </div>
 
                         <div class="card level-card level-target-strong">
                             <div class="label">Take Profit 2</div>
                             <div id="take-profit-2" class="value level-value">
                                 {{ "{:,.0f}".format(result["take_profit_2"]).replace(",", " ") }}
+                            </div>
+                            <div class="level-actions level-actions-single">
+                                <span>Точное значение</span>
+                                <button
+                                    class="copy-level-button"
+                                    type="button"
+                                    data-copy-target="take-profit-2"
+                                >Копировать</button>
                             </div>
                         </div>
                     </div>

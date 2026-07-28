@@ -251,6 +251,24 @@
                 element.textContent = value;
             }
         });
+
+        const averages = {
+            "buy-zone-1-average": (
+                Number(levels.buy_zone_1[0])
+                + Number(levels.buy_zone_1[1])
+            ) / 2,
+            "buy-zone-2-average": (
+                Number(levels.buy_zone_2[0])
+                + Number(levels.buy_zone_2[1])
+            ) / 2
+        };
+
+        Object.entries(averages).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = formatLevel(value);
+            }
+        });
     }
 
     function updateLegend(levels) {
@@ -955,4 +973,34 @@
     toggle.checked = localStorage.getItem(storageKey) === "1";
     toggle.addEventListener("change", applyBalanceFilter);
     applyBalanceFilter();
+})();
+
+(function initializeLevelCopyButtons() {
+    const buttons = Array.from(
+        document.querySelectorAll(".copy-level-button[data-copy-target]")
+    );
+
+    buttons.forEach((button) => {
+        button.addEventListener("click", async () => {
+            const target = document.getElementById(button.dataset.copyTarget);
+            if (!target) {
+                return;
+            }
+
+            const value = target.textContent.replace(/\s+/g, "").trim();
+
+            try {
+                await navigator.clipboard.writeText(value);
+                const originalText = button.textContent;
+                button.textContent = "Скопировано";
+                button.classList.add("is-copied");
+                window.setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove("is-copied");
+                }, 1400);
+            } catch (error) {
+                console.warn("Не удалось скопировать уровень", error);
+            }
+        });
+    });
 })();
