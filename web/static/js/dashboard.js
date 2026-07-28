@@ -198,7 +198,11 @@
             LightweightCharts.LineStyle.Dashed
         ));
 
-        createZone(levels.support, "zone-support", "Поддержка");
+        createZone(
+            levels.support_zone || levels.support,
+            "zone-support",
+            "Поддержка"
+        );
         createZone(levels.resistance, "zone-resistance", "Сопротивление");
         createZone(levels.buy_zone_1, "zone-buy", "Buy Zone 1");
         createZone(levels.buy_zone_2, "zone-buy", "Buy Zone 2");

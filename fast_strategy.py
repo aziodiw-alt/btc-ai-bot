@@ -148,6 +148,7 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         price,
         support,
         resistance,
+        atr=ind_1h["atr"],
         profile="fast",
     )
     available_profit_pct = trade_levels["available_profit_pct"]
@@ -166,6 +167,7 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         "strategy_description": "Частые небольшие сделки · 4H + 1H",
         "price": round(price, 2),
         "support": round(support, 2),
+        "support_zone": trade_levels["support_zone"],
         "resistance": round(resistance, 2),
         "distance_to_resistance_pct": round(distance_to_resistance, 2),
         "trend_score": trend_score,

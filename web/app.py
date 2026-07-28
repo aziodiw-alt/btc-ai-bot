@@ -619,6 +619,7 @@ def chart_data():
                 "levels": {
                     "current_price": result["price"],
                     "support": result["support"],
+                    "support_zone": result.get("support_zone"),
                     "resistance": result["resistance"],
                     "buy_zone_1": result["buy_zone_1"],
                     "buy_zone_2": result["buy_zone_2"],

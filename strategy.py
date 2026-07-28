@@ -183,6 +183,7 @@ def analyze_strategy(symbol="BTCUSDT"):
         price,
         support,
         resistance,
+        atr=ind_4h["atr"],
         profile="swing",
     )
     target_15_20_available = trade_levels["target_available"]
@@ -204,6 +205,7 @@ def analyze_strategy(symbol="BTCUSDT"):
         "strategy_name": "Swing",
         "price": round(price, 2),
         "support": round(support, 2),
+        "support_zone": trade_levels["support_zone"],
         "resistance": round(resistance, 2),
         "distance_to_resistance_pct": round(
             distance_to_resistance, 2
