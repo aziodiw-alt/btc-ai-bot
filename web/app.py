@@ -19,6 +19,7 @@ if BASE_DIR not in sys.path:
 from market import get_klines
 from strategy import analyze_strategy
 from fast_strategy import analyze_fast_strategy
+from okx_client import OkxReadOnlyClient
 from dashboard_history import (
     get_dashboard_history,
     get_strategy_comparison,
@@ -101,6 +102,20 @@ def require_dashboard_login():
 @app.route("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.route("/api/okx/status")
+def okx_status():
+    try:
+        status = OkxReadOnlyClient().connection_status()
+        return jsonify(status)
+    except Exception as error:
+        return jsonify(
+            {
+                "connected": False,
+                "error": str(error),
+            }
+        ), 502
 
 
 @app.template_filter("local_datetime")
