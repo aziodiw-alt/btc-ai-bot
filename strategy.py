@@ -2,6 +2,7 @@ from sentiment import get_sentiment
 from market import get_ticker, get_klines
 from indicators import analyze
 from levels import calculate_support_resistance, calculate_trade_levels
+from market_state import detect_market_state
 
 
 def analyze_strategy(symbol="BTCUSDT"):
@@ -13,6 +14,7 @@ def analyze_strategy(symbol="BTCUSDT"):
 
     ind_1d = analyze(df_1d)
     ind_4h = analyze(df_4h)
+    market_state = detect_market_state(price, ind_1d, ind_4h)
 
     support, resistance = calculate_support_resistance(df_4h)
 
@@ -148,11 +150,11 @@ def analyze_strategy(symbol="BTCUSDT"):
         + sentiment_score
     )
 
-    # Обязательный фильтр: при слабом тренде сигнал блокируется
-    if trend_score < 20:
+    # First choose the rule set that matches the current market mode.
+    if market_state["key"] == "DOWNTREND":
         grade = "SKIP"
-        decision = "SKIP — слабый дневной тренд"
-        warnings.append("Главный фильтр: тренд слишком слабый")
+        decision = "SKIP — нисходящий тренд"
+        warnings.append("Режим DOWNTREND: новые спотовые покупки заблокированы")
 
     elif total_score >= 85:
         grade = "A+"
@@ -188,7 +190,17 @@ def analyze_strategy(symbol="BTCUSDT"):
     )
     target_15_20_available = trade_levels["target_available"]
 
-    if grade in {"A", "A+"} and not target_15_20_available:
+    if (
+        market_state["key"] == "RANGE"
+        and grade in {"A", "A+"}
+        and entry_score < 15
+    ):
+        grade = "B"
+        decision = "WAIT — в диапазоне ждём цену возле поддержки"
+        warnings.append(
+            "Range-фильтр: текущая цена ещё не находится в качественной зоне входа"
+        )
+    elif grade in {"A", "A+"} and not target_15_20_available:
         grade = "B"
         decision = "WAIT — до безопасной цели нет запаса 1.5%"
         warnings.append(
@@ -203,6 +215,9 @@ def analyze_strategy(symbol="BTCUSDT"):
         "asset": symbol.replace("USDT", ""),
         "strategy_key": "swing",
         "strategy_name": "Swing",
+        "market_mode": market_state["key"],
+        "market_mode_label": market_state["label"],
+        "market_mode_description": market_state["description"],
         "price": round(price, 2),
         "support": round(support, 2),
         "support_zone": trade_levels["support_zone"],

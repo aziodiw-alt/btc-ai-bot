@@ -471,6 +471,22 @@ body.is-resizing-workspace {
     background: #fbbf24;
 }
 
+.market-mode {
+    font-size: 20px;
+}
+
+.market-mode-uptrend {
+    color: #34d399;
+}
+
+.market-mode-range {
+    color: #fbbf24;
+}
+
+.market-mode-downtrend {
+    color: #f87171;
+}
+
 .decision {
     padding: 20px;
     background: #1f2937;

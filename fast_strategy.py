@@ -2,6 +2,7 @@ from indicators import analyze
 from market import get_klines, get_ticker
 from sentiment import get_sentiment
 from levels import calculate_support_resistance, calculate_trade_levels
+from market_state import detect_market_state
 
 
 def analyze_fast_strategy(symbol="BTCUSDT"):
@@ -10,6 +11,7 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
     frame_1h = get_klines("60", 250, symbol)
     ind_4h = analyze(frame_4h)
     ind_1h = analyze(frame_1h)
+    market_state = detect_market_state(price, ind_4h, ind_1h)
     support, resistance = calculate_support_resistance(frame_1h, lookback=80)
 
     trend_score = 0
@@ -128,9 +130,9 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         + sentiment_score
     )
 
-    if trend_score < 20:
+    if market_state["key"] == "DOWNTREND":
         grade = "SKIP"
-        decision = "FAST SKIP — направление 4H слишком слабое"
+        decision = "FAST SKIP — нисходящий режим рынка"
     elif total_score >= 85:
         grade = "A+"
         decision = "FAST BUY LIMIT — сильный короткий сигнал"
@@ -165,6 +167,9 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         "strategy_key": "fast",
         "strategy_name": "Fast",
         "strategy_description": "Частые небольшие сделки · 4H + 1H",
+        "market_mode": market_state["key"],
+        "market_mode_label": market_state["label"],
+        "market_mode_description": market_state["description"],
         "price": round(price, 2),
         "support": round(support, 2),
         "support_zone": trade_levels["support_zone"],

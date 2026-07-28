@@ -74,6 +74,7 @@ def format_analysis(result):
 
 💰 Цена: {format_number(result["price"], price_decimals)}
 
+🧭 Режим: {result.get("market_mode_label", result.get("market_mode", "—"))}
 📈 Trend: {result["trend_score"]}/40
 🎯 Entry: {result["entry_score"]}/20
 📊 Indicators: {result["indicators_score"]}/10
@@ -564,6 +565,7 @@ def format_auto_signal(result):
 ⭐ Качество: {result["grade"]}
 🏆 Оценка: {result["total_score"]}/100
 💰 Текущая цена: {format_number(result["price"], price_decimals)}
+🧭 Режим рынка: {result.get("market_mode_label", result.get("market_mode", "—"))}
 
 🤖 Решение стратегии:
 {result["decision"]}

@@ -128,6 +128,16 @@
                         <div class="label">{{ result.get("rsi_label", "RSI 4H") }}</div>
                         <div class="value">{{ result["rsi_4h"] }}</div>
                     </div>
+
+                    <div class="card">
+                        <div class="label">Режим рынка</div>
+                        <div class="value market-mode market-mode-{{ result.get('market_mode', 'RANGE')|lower }}">
+                            {{ result.get("market_mode_label", result.get("market_mode", "—")) }}
+                        </div>
+                        <div class="score-breakdown">
+                            {{ result.get("market_mode_description", "") }}
+                        </div>
+                    </div>
                 </div>
             </section>
 
