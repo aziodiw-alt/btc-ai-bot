@@ -1,0 +1,226 @@
+diff --git a/web/static/css/style.css b/web/static/css/style.css
+index 9c91e38..d655804 100644
+--- a/web/static/css/style.css
++++ b/web/static/css/style.css
+@@ -992,6 +992,14 @@ body.is-resizing-workspace {
+     color: #f87171;
+ }
+ 
++.analytics-strip .market-regime-card .market-mode {
++    max-width: 100%;
++    font-size: clamp(13px, 1.15vw, 16px);
++    line-height: 1.15;
++    overflow-wrap: anywhere;
++    white-space: normal;
++}
++
+ .decision {
+     padding: 20px;
+     background: #1f2937;
+@@ -1057,6 +1065,52 @@ body.is-resizing-workspace {
+     background: #eab308;
+ }
+ 
++.level-actions {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 8px;
++    margin-top: 11px;
++    padding-top: 9px;
++    color: #94a3b8;
++    font-size: 10px;
++    border-top: 1px solid rgb(148 163 184 / 14%);
++}
++
++.level-actions strong {
++    color: #e2e8f0;
++    font-size: 11px;
++}
++
++.copy-level-button {
++    flex: 0 0 auto;
++    padding: 5px 8px;
++    color: #bfdbfe;
++    background: rgb(37 99 235 / 18%);
++    border: 1px solid rgb(96 165 250 / 38%);
++    border-radius: 7px;
++    font: inherit;
++    font-size: 9px;
++    font-weight: 800;
++    cursor: pointer;
++    transition:
++        color 0.15s ease,
++        background 0.15s ease,
++        border-color 0.15s ease;
++}
++
++.copy-level-button:hover {
++    color: #ffffff;
++    background: rgb(37 99 235 / 42%);
++    border-color: #60a5fa;
++}
++
++.copy-level-button.is-copied {
++    color: #a7f3d0;
++    background: rgb(5 150 105 / 25%);
++    border-color: #34d399;
++}
++
+ .analysis-grid {
+     display: grid;
+     grid-template-columns: 1fr 1fr;
+diff --git a/web/static/js/dashboard.js b/web/static/js/dashboard.js
+index 0a64a29..7e176cc 100644
+--- a/web/static/js/dashboard.js
++++ b/web/static/js/dashboard.js
+@@ -251,6 +251,24 @@
+                 element.textContent = value;
+             }
+         });
++
++        const averages = {
++            "buy-zone-1-average": (
++                Number(levels.buy_zone_1[0])
++                + Number(levels.buy_zone_1[1])
++            ) / 2,
++            "buy-zone-2-average": (
++                Number(levels.buy_zone_2[0])
++                + Number(levels.buy_zone_2[1])
++            ) / 2
++        };
++
++        Object.entries(averages).forEach(([id, value]) => {
++            const element = document.getElementById(id);
++            if (element) {
++                element.textContent = formatLevel(value);
++            }
++        });
+     }
+ 
+     function updateLegend(levels) {
+@@ -956,3 +974,33 @@
+     toggle.addEventListener("change", applyBalanceFilter);
+     applyBalanceFilter();
+ })();
++
++(function initializeLevelCopyButtons() {
++    const buttons = Array.from(
++        document.querySelectorAll(".copy-level-button[data-copy-target]")
++    );
++
++    buttons.forEach((button) => {
++        button.addEventListener("click", async () => {
++            const target = document.getElementById(button.dataset.copyTarget);
++            if (!target) {
++                return;
++            }
++
++            const value = target.textContent.replace(/\s+/g, "").trim();
++
++            try {
++                await navigator.clipboard.writeText(value);
++                const originalText = button.textContent;
++                button.textContent = "Скопировано";
++                button.classList.add("is-copied");
++                window.setTimeout(() => {
++                    button.textContent = originalText;
++                    button.classList.remove("is-copied");
++                }, 1400);
++            } catch (error) {
++                console.warn("Не удалось скопировать уровень", error);
++            }
++        });
++    });
++})();
+diff --git a/web/templates/index.html b/web/templates/index.html
+index ad2f1ee..430adfe 100644
+--- a/web/templates/index.html
++++ b/web/templates/index.html
+@@ -380,6 +380,20 @@
+                                 –
+                                 {{ "{:,.0f}".format(result["buy_zone_1"][1]).replace(",", " ") }}
+                             </div>
++                            <div class="level-actions">
++                                <span>
++                                    Средняя:
++                                    <strong id="buy-zone-1-average">
++                                        {{ "{:,.0f}".format((result["buy_zone_1"][0] + result["buy_zone_1"][1]) / 2).replace(",", " ") }}
++                                    </strong>
++                                </span>
++                                <button
++                                    class="copy-level-button"
++                                    type="button"
++                                    data-copy-target="buy-zone-1-average"
++                                    aria-label="Копировать среднюю цену Buy Zone 1"
++                                >Копировать</button>
++                            </div>
+                         </div>
+ 
+                         <div class="card level-card level-buy-secondary">
+@@ -389,6 +403,20 @@
+                                 –
+                                 {{ "{:,.0f}".format(result["buy_zone_2"][1]).replace(",", " ") }}
+                             </div>
++                            <div class="level-actions">
++                                <span>
++                                    Средняя:
++                                    <strong id="buy-zone-2-average">
++                                        {{ "{:,.0f}".format((result["buy_zone_2"][0] + result["buy_zone_2"][1]) / 2).replace(",", " ") }}
++                                    </strong>
++                                </span>
++                                <button
++                                    class="copy-level-button"
++                                    type="button"
++                                    data-copy-target="buy-zone-2-average"
++                                    aria-label="Копировать среднюю цену Buy Zone 2"
++                                >Копировать</button>
++                            </div>
+                         </div>
+ 
+                         <div class="card level-card level-stop">
+@@ -396,6 +424,14 @@
+                             <div id="stop-loss" class="value level-value">
+                                 {{ "{:,.0f}".format(result["stop_loss"]).replace(",", " ") }}
+                             </div>
++                            <div class="level-actions level-actions-single">
++                                <span>Точное значение</span>
++                                <button
++                                    class="copy-level-button"
++                                    type="button"
++                                    data-copy-target="stop-loss"
++                                >Копировать</button>
++                            </div>
+                         </div>
+ 
+                         <div class="card level-card level-target">
+@@ -403,6 +439,14 @@
+                             <div id="take-profit-1" class="value level-value">
+                                 {{ "{:,.0f}".format(result["take_profit_1"]).replace(",", " ") }}
+                             </div>
++                            <div class="level-actions level-actions-single">
++                                <span>Точное значение</span>
++                                <button
++                                    class="copy-level-button"
++                                    type="button"
++                                    data-copy-target="take-profit-1"
++                                >Копировать</button>
++                            </div>
+                         </div>
+ 
+                         <div class="card level-card level-target-strong">
+@@ -410,6 +454,14 @@
+                             <div id="take-profit-2" class="value level-value">
+                                 {{ "{:,.0f}".format(result["take_profit_2"]).replace(",", " ") }}
+                             </div>
++                            <div class="level-actions level-actions-single">
++                                <span>Точное значение</span>
++                                <button
++                                    class="copy-level-button"
++                                    type="button"
++                                    data-copy-target="take-profit-2"
++                                >Копировать</button>
++                            </div>
+                         </div>
+                     </div>
+                 </aside>

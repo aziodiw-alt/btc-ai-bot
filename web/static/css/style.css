@@ -1230,7 +1230,7 @@ body.is-resizing-workspace {
 }
 
 .history-table-scroll {
-    overflow-x: auto;
+    overflow-x: hidden;
 }
 
 .history-table {
@@ -1272,37 +1272,20 @@ body.is-resizing-workspace {
 
 .open-orders-table {
     width: 100%;
-    min-width: 1390px;
-    table-layout: fixed;
+    min-width: 0;
+    table-layout: auto;
 }
 
-.open-orders-table th {
-    position: relative;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.open-orders-table th,
+.open-orders-table td {
+    padding: 10px 8px;
+    font-size: 11px;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
-
-.open-orders-table th:nth-child(1) { width: 145px; }
-.open-orders-table th:nth-child(2) { width: 85px; }
-.open-orders-table th:nth-child(3) { width: 125px; }
-.open-orders-table th:nth-child(4) { width: 100px; }
-.open-orders-table th:nth-child(5) { width: 140px; }
-.open-orders-table th:nth-child(6) { width: 115px; }
-.open-orders-table th:nth-child(7) { width: 130px; }
-.open-orders-table th:nth-child(8) { width: 195px; }
-.open-orders-table th:nth-child(9) { width: 110px; }
-.open-orders-table th:nth-child(10) { width: 205px; }
 
 .column-resizer {
-    position: absolute;
-    top: 0;
-    right: -3px;
-    bottom: 0;
-    width: 8px;
-    cursor: col-resize;
-    touch-action: none;
-    user-select: none;
-    z-index: 2;
+    display: none;
 }
 
 .column-resizer::after {

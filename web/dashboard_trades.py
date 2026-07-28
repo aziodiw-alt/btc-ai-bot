@@ -1088,6 +1088,7 @@ def get_pending_orders(
     )
 
     items = []
+    remaining_open_quantity = open_quantity
 
     for row in rows:
         order = dict(row)
@@ -1100,6 +1101,15 @@ def get_pending_orders(
         order["estimated_profit_pct"] = None
         order["estimated_cost_usdt"] = None
         order["matched_quantity"] = 0.0
+        order["unmatched_quantity"] = 0.0
+        order["profit_coverage_pct"] = None
+        order["profit_is_complete"] = False
+        order["average_buy_price"] = (
+            average_buy_price if side == "SELL" else None
+        )
+        if side == "SELL":
+            order["unmatched_quantity"] = order_quantity
+            order["profit_coverage_pct"] = 0.0
 
         if market_price and market_price > 0:
             if side == "BUY":
@@ -1119,21 +1129,39 @@ def get_pending_orders(
             side == "SELL"
             and average_buy_price is not None
             and order_quantity > 0
+            and remaining_open_quantity > 1e-12
         ):
-            matched_quantity = min(order_quantity, open_quantity)
+            matched_quantity = min(
+                order_quantity,
+                remaining_open_quantity,
+            )
+            remaining_open_quantity = max(
+                remaining_open_quantity - matched_quantity,
+                0,
+            )
             entry_value = matched_quantity * average_buy_price
             exit_value = matched_quantity * order_price
-            estimated_fees = (
-                entry_value * DEFAULT_FEE_RATE
-                + exit_value * DEFAULT_FEE_RATE
-            )
+            # average_buy_price is derived from FIFO unit_cost, which
+            # already includes the entry fee. Only the future sell fee
+            # must be subtracted here.
+            estimated_sell_fee = exit_value * DEFAULT_FEE_RATE
             estimated_profit = (
                 exit_value
                 - entry_value
-                - estimated_fees
+                - estimated_sell_fee
             )
 
             order["matched_quantity"] = matched_quantity
+            order["unmatched_quantity"] = max(
+                order_quantity - matched_quantity,
+                0,
+            )
+            order["profit_coverage_pct"] = (
+                matched_quantity / order_quantity * 100
+            )
+            order["profit_is_complete"] = (
+                order["unmatched_quantity"] <= 1e-12
+            )
             order["estimated_cost_usdt"] = entry_value
             order["estimated_profit_usdt"] = estimated_profit
             order["estimated_profit_pct"] = (

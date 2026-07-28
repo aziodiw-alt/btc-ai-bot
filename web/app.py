@@ -359,6 +359,20 @@ def home():
             for order in open_orders
             if order["estimated_cost_usdt"] is not None
         )
+        sell_quantity = sum(
+            float(order["order_quantity"])
+            for order in open_orders
+            if order["side"] == "SELL"
+        )
+        matched_sell_quantity = sum(
+            float(order["matched_quantity"])
+            for order in open_orders
+            if order["side"] == "SELL"
+        )
+        unmatched_sell_quantity = max(
+            sell_quantity - matched_sell_quantity,
+            0,
+        )
         open_order_summary = {
             "count": len(open_orders),
             "buy_count": sum(
@@ -383,6 +397,17 @@ def home():
                 if expected_cost > 0
                 else None
             ),
+            "profit_coverage_pct": (
+                matched_sell_quantity / sell_quantity * 100
+                if sell_quantity > 0
+                else None
+            ),
+            "profit_is_complete": (
+                sell_quantity > 0
+                and unmatched_sell_quantity <= 1e-12
+            ),
+            "matched_sell_quantity": matched_sell_quantity,
+            "unmatched_sell_quantity": unmatched_sell_quantity,
             "calculated_sell_count": sum(
                 order["estimated_profit_usdt"] is not None
                 for order in open_orders
@@ -401,6 +426,10 @@ def home():
             "sell_value": 0,
             "expected_profit": 0,
             "expected_profit_pct": None,
+            "profit_coverage_pct": None,
+            "profit_is_complete": False,
+            "matched_sell_quantity": 0,
+            "unmatched_sell_quantity": 0,
             "calculated_sell_count": 0,
         }
 

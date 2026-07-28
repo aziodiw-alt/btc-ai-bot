@@ -509,14 +509,21 @@
                         </strong>
                     </div>
                     <div class="open-order-summary-card">
-                        <span>Ожидаемая чистая прибыль</span>
+                        <span>
+                            {% if open_order_summary["profit_is_complete"] %}
+                                Ожидаемая чистая прибыль
+                            {% else %}
+                                Частичный расчёт прибыли
+                            {% endif %}
+                        </span>
                         {% if open_order_summary["expected_profit_pct"] is not none %}
                             <strong class="{{ 'status-buy' if open_order_summary['expected_profit'] >= 0 else 'status-skip' }}">
                                 {{ "{:+.2f}".format(open_order_summary["expected_profit"]) }} USDT
                             </strong>
                             <small>
                                 {{ "{:+.2f}".format(open_order_summary["expected_profit_pct"]) }}%
-                                · рассчитано SELL: {{ open_order_summary["calculated_sell_count"] }}
+                                · покрыто покупками:
+                                {{ "%.1f"|format(open_order_summary["profit_coverage_pct"]) }}%
                             </small>
                         {% else %}
                             <strong>—</strong>
@@ -525,9 +532,6 @@
                     </div>
                 </div>
 
-                <p class="table-resize-hint">
-                    ↔ Ширину колонок можно менять, потянув границу заголовка. Двойной щелчок сбрасывает размеры.
-                </p>
                 <div class="history-table-scroll">
                     <table
                         id="open-orders-table"
@@ -586,9 +590,22 @@
                                     <td>
                                         {% if order["estimated_profit_usdt"] is not none %}
                                             <span class="{{ 'status-buy' if order['estimated_profit_usdt'] >= 0 else 'status-skip' }}">
+                                                {% if not order["profit_is_complete"] %}
+                                                    Частично:
+                                                {% endif %}
                                                 {{ "{:+.2f}".format(order["estimated_profit_usdt"]) }} USDT
                                                 ({{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%)
                                             </span>
+                                            {% if not order["profit_is_complete"] %}
+                                                <small class="table-muted">
+                                                    Покрыто исполненными покупками:
+                                                    {{ "%.1f"|format(order["profit_coverage_pct"]) }}%
+                                                </small>
+                                            {% endif %}
+                                            <small class="table-muted">
+                                                Средняя покупка:
+                                                {{ "{:,.0f}".format(order["average_buy_price"]).replace(",", " ") }}
+                                            </small>
                                         {% elif order["side"] == "BUY" %}
                                             <span class="table-muted">После исполнения</span>
                                         {% else %}
