@@ -28,6 +28,7 @@ from dashboard_history import (
 from dashboard_trades import (
     add_pending_orders,
     add_trade,
+    calculate_sell_advice,
     cancel_pending_order,
     classify_unassigned_orders,
     fill_pending_order,
@@ -322,6 +323,10 @@ def home():
     okx_account_error = None
     okx_open_orders = []
     okx_trade_history = []
+    sell_advice = {
+        "available": False,
+        "reason": "Нет данных для расчёта.",
+    }
 
     if active_exchange == "okx":
         try:
@@ -372,6 +377,11 @@ def home():
         unmatched_sell_quantity = max(
             sell_quantity - matched_sell_quantity,
             0,
+        )
+        sell_advice = calculate_sell_advice(
+            trades_data["bybit"],
+            current_price=current_price,
+            pending_sell_quantity=sell_quantity,
         )
         open_order_summary = {
             "count": len(open_orders),
@@ -451,6 +461,7 @@ def home():
         trade_stats=trades_data["stats"],
         open_orders=open_orders,
         open_order_summary=open_order_summary,
+        sell_advice=sell_advice,
         default_trade_date=datetime.now().strftime("%Y-%m-%dT%H:%M"),
         trade_added=request.args.get("trade_added") == "1",
         trade_error=request.args.get("trade_error"),

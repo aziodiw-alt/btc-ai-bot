@@ -456,6 +456,81 @@
             </section>
 
             {% if active_exchange == "bybit" %}
+            <section class="sell-advice-panel">
+                <div class="sell-advice-heading">
+                    <div>
+                        <span class="sell-advice-eyebrow">Расчёт по предыдущим сделкам</span>
+                        <h2>Совет по продаже</h2>
+                    </div>
+                    <span class="sell-advice-badge">Комиссии учтены</span>
+                </div>
+
+                {% if sell_advice["available"] %}
+                    <div class="sell-advice-grid">
+                        <div class="sell-advice-card sell-advice-basis">
+                            <span>Средняя себестоимость</span>
+                            <strong>
+                                {{ "{:,.0f}".format(sell_advice["average_buy_price"]).replace(",", " ") }}
+                                USDT
+                            </strong>
+                            <small>
+                                Остаток:
+                                {{ "%.8f"|format(sell_advice["quantity"]) }}
+                                {{ asset_info["asset"] }}
+                            </small>
+                        </div>
+
+                        <div class="sell-advice-card sell-advice-target">
+                            <span>Продажа для чистых +1,5%</span>
+                            <strong>
+                                {{ "{:,.0f}".format(sell_advice["target_price_15"]).replace(",", " ") }}
+                                USDT
+                            </strong>
+                            <small>
+                                До цели:
+                                {{ "{:+.2f}".format(sell_advice["distance_15_pct"]) }}%
+                                · прибыль ≈
+                                {{ "%.2f"|format(sell_advice["profit_15"]) }} USDT
+                            </small>
+                        </div>
+
+                        <div class="sell-advice-card sell-advice-target-strong">
+                            <span>Продажа для чистых +2,0%</span>
+                            <strong>
+                                {{ "{:,.0f}".format(sell_advice["target_price_20"]).replace(",", " ") }}
+                                USDT
+                            </strong>
+                            <small>
+                                До цели:
+                                {{ "{:+.2f}".format(sell_advice["distance_20_pct"]) }}%
+                                · прибыль ≈
+                                {{ "%.2f"|format(sell_advice["profit_20"]) }} USDT
+                            </small>
+                        </div>
+
+                        <div class="sell-advice-card sell-advice-position">
+                            <span>Доступно для нового SELL</span>
+                            <strong>
+                                {{ "%.8f"|format(sell_advice["free_quantity"]) }}
+                                {{ asset_info["asset"] }}
+                            </strong>
+                            <small>
+                                Уже в SELL:
+                                {{ "%.8f"|format(sell_advice["reserved_quantity"]) }}
+                            </small>
+                        </div>
+                    </div>
+                    <p class="sell-advice-note">
+                        Цена рассчитана по FIFO-себестоимости оставшихся покупок.
+                        Комиссия покупки уже входит в себестоимость; комиссия будущей продажи учтена отдельно.
+                    </p>
+                {% else %}
+                    <div class="sell-advice-empty">
+                        {{ sell_advice["reason"] }}
+                    </div>
+                {% endif %}
+            </section>
+
             <section id="open-orders" class="open-orders-panel open-orders-below-chart">
                 <div class="open-orders-heading">
                     <div>

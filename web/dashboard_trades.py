@@ -29,6 +29,65 @@ TELEGRAM_DATABASE_PATH = Path(
 )
 
 
+def calculate_sell_advice(
+    fifo_stats,
+    current_price=None,
+    pending_sell_quantity=0,
+    fee_rate=DEFAULT_FEE_RATE,
+):
+    quantity = float(fifo_stats.get("open_quantity") or 0)
+    open_cost = float(fifo_stats.get("open_cost") or 0)
+
+    if quantity <= 1e-12 or open_cost <= 0:
+        return {
+            "available": False,
+            "reason": "Нет остатка исполненных покупок для расчёта.",
+        }
+
+    average_buy_price = open_cost / quantity
+    target_price_15 = (
+        average_buy_price * 1.015 / (1 - fee_rate)
+    )
+    target_price_20 = (
+        average_buy_price * 1.020 / (1 - fee_rate)
+    )
+    reserved_quantity = min(
+        max(float(pending_sell_quantity or 0), 0),
+        quantity,
+    )
+    free_quantity = max(quantity - reserved_quantity, 0)
+    market_price = (
+        float(current_price)
+        if current_price is not None
+        else None
+    )
+
+    return {
+        "available": True,
+        "quantity": quantity,
+        "open_cost": open_cost,
+        "average_buy_price": average_buy_price,
+        "target_price_15": target_price_15,
+        "target_price_20": target_price_20,
+        "profit_15": open_cost * 0.015,
+        "profit_20": open_cost * 0.020,
+        "reserved_quantity": reserved_quantity,
+        "free_quantity": free_quantity,
+        "current_price": market_price,
+        "distance_15_pct": (
+            (target_price_15 / market_price - 1) * 100
+            if market_price and market_price > 0
+            else None
+        ),
+        "distance_20_pct": (
+            (target_price_20 / market_price - 1) * 100
+            if market_price and market_price > 0
+            else None
+        ),
+        "fee_rate": fee_rate,
+    }
+
+
 def _connect():
     if not TELEGRAM_DATABASE_PATH.exists():
         raise ValueError(
