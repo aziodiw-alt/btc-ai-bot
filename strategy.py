@@ -5,12 +5,12 @@ from levels import calculate_support_resistance, calculate_trade_levels
 from market_state import detect_market_state
 
 
-def analyze_strategy(symbol="BTCUSDT"):
-    ticker = get_ticker(symbol)
+def analyze_strategy(symbol="BTCUSDT", exchange="bybit"):
+    ticker = get_ticker(symbol, exchange=exchange)
     price = float(ticker["price"])
 
-    df_1d = get_klines("D", 250, symbol)
-    df_4h = get_klines("240", 250, symbol)
+    df_1d = get_klines("D", 250, symbol, exchange=exchange)
+    df_4h = get_klines("240", 250, symbol, exchange=exchange)
 
     ind_1d = analyze(df_1d)
     ind_4h = analyze(df_4h)
@@ -211,7 +211,12 @@ def analyze_strategy(symbol="BTCUSDT"):
 
     return {
         "symbol": symbol,
-        "display_symbol": symbol.replace("USDT", "/USDT"),
+        "exchange": exchange,
+        "display_symbol": (
+            symbol.replace("USDT", "/USD (USDC)")
+            if exchange == "okx"
+            else symbol.replace("USDT", "/USDT")
+        ),
         "asset": symbol.replace("USDT", ""),
         "strategy_key": "swing",
         "strategy_name": "Swing",

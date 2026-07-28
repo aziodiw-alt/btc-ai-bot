@@ -16,6 +16,7 @@
     }
 
     const activeSymbol = chartElement.dataset.symbol || "BTCUSDT";
+    const activeExchange = chartElement.dataset.exchange || "bybit";
     const priceDigits = activeSymbol === "BTCUSDT" ? 1 : 2;
 
     function showLoading(message = "Загружаем свечи и уровни…") {
@@ -370,6 +371,7 @@
             );
             apiUrl.searchParams.set("timeframe", timeframe);
             apiUrl.searchParams.set("symbol", activeSymbol);
+            apiUrl.searchParams.set("exchange", activeExchange);
             apiUrl.searchParams.set(
                 "strategy",
                 chartElement.dataset.strategy || "swing"
@@ -390,7 +392,9 @@
             }
 
             if (!payload.candles || payload.candles.length === 0) {
-                throw new Error("Bybit не вернул свечи");
+                throw new Error(
+                    `${activeExchange.toUpperCase()} не вернул свечи`
+                );
             }
 
             candles.setData(payload.candles);

@@ -171,10 +171,15 @@ def _normalize_exchange(value):
     return normalized if normalized in {"bybit", "okx"} else "bybit"
 
 
-def _get_cached_strategy(strategy_name="swing", symbol="BTCUSDT"):
+def _get_cached_strategy(
+    strategy_name="swing",
+    symbol="BTCUSDT",
+    exchange="bybit",
+):
     strategy_name = _normalize_strategy_name(strategy_name)
     symbol = _normalize_symbol(symbol)
-    cache_key = (symbol, strategy_name)
+    exchange = _normalize_exchange(exchange)
+    cache_key = (exchange, symbol, strategy_name)
     now = time.monotonic()
 
     with _cache_lock:
@@ -186,9 +191,9 @@ def _get_cached_strategy(strategy_name="swing", symbol="BTCUSDT"):
             return cached_value
 
         if strategy_name == "fast":
-            result = analyze_fast_strategy(symbol)
+            result = analyze_fast_strategy(symbol, exchange=exchange)
         else:
-            result = analyze_strategy(symbol)
+            result = analyze_strategy(symbol, exchange=exchange)
             result.setdefault("strategy_key", "swing")
             result.setdefault("strategy_name", "Swing")
             result.setdefault(
@@ -211,9 +216,14 @@ def _get_cached_strategy(strategy_name="swing", symbol="BTCUSDT"):
         return result
 
 
-def _get_cached_candles(timeframe, symbol="BTCUSDT"):
+def _get_cached_candles(
+    timeframe,
+    symbol="BTCUSDT",
+    exchange="bybit",
+):
     symbol = _normalize_symbol(symbol)
-    cache_key = (symbol, timeframe)
+    exchange = _normalize_exchange(exchange)
+    cache_key = (exchange, symbol, timeframe)
     now = time.monotonic()
 
     with _cache_lock:
@@ -222,7 +232,12 @@ def _get_cached_candles(timeframe, symbol="BTCUSDT"):
         if cached and now - cached["created_at"] < CANDLE_CACHE_TTL:
             return cached["value"]
 
-        frame = get_klines(timeframe, 250, symbol)
+        frame = get_klines(
+            timeframe,
+            250,
+            symbol,
+            exchange=exchange,
+        )
         candles = [
             {
                 "time": _unix_seconds(row.time),
@@ -252,7 +267,11 @@ def home():
         request.args.get("strategy", "swing")
     )
     try:
-        result = _get_cached_strategy(strategy_name, symbol)
+        result = _get_cached_strategy(
+            strategy_name,
+            symbol,
+            active_exchange,
+        )
         history_data = get_dashboard_history(
             strategy_name=strategy_name,
             symbol=asset_info["display"],
@@ -648,13 +667,30 @@ def chart_data():
         strategy_name = _normalize_strategy_name(
             request.args.get("strategy", "swing")
         )
-        candles = _get_cached_candles(requested_timeframe, symbol)
-        result = _get_cached_strategy(strategy_name, symbol)
+        exchange = _normalize_exchange(
+            request.args.get("exchange", "bybit")
+        )
+        candles = _get_cached_candles(
+            requested_timeframe,
+            symbol,
+            exchange,
+        )
+        result = _get_cached_strategy(
+            strategy_name,
+            symbol,
+            exchange,
+        )
 
         return jsonify(
             {
                 "candles": candles,
                 "symbol": symbol,
+                "exchange": exchange,
+                "display_symbol": (
+                    symbol.replace("USDT", "/USD (USDC)")
+                    if exchange == "okx"
+                    else symbol.replace("USDT", "/USDT")
+                ),
                 "timeframe": requested_timeframe,
                 "timeframe_label": allowed_timeframes[requested_timeframe],
                 "levels": {

@@ -137,7 +137,9 @@
                                 {{ "{:,.2f}".format(result["price"]).replace(",", " ") }}
                             {% endif %}
                         </div>
-                        <span class="price-card-quote">USDT</span>
+                        <span class="price-card-quote">
+                            {{ "USDC" if active_exchange == "okx" else "USDT" }}
+                        </span>
                     </div>
 
                     <div class="card">
@@ -205,7 +207,10 @@
                 <div class="chart-panel">
                     <div class="chart-heading">
                         <h2 class="section-title">
-                            График {{ asset_info["display"] }} · <span id="chart-timeframe-label">{{ "1H" if active_strategy == "fast" else "4H" }}</span>
+                            График
+                            {{ active_symbol.replace("USDT", "/USD (USDC)") if active_exchange == "okx" else asset_info["display"] }}
+                            · {{ active_exchange|upper }}
+                            · <span id="chart-timeframe-label">{{ "1H" if active_strategy == "fast" else "4H" }}</span>
                         </h2>
 
                         <div class="timeframe-switcher" aria-label="Таймфрейм графика">
@@ -248,6 +253,7 @@
                             data-api-url="{{ url_for('chart_data') }}"
                             data-strategy="{{ active_strategy }}"
                             data-symbol="{{ active_symbol }}"
+                            data-exchange="{{ active_exchange }}"
                             data-default-timeframe="{{ '60' if active_strategy == 'fast' else '240' }}"
                             data-default-timeframe-label="{{ '1H' if active_strategy == 'fast' else '4H' }}"
                         ></div>

@@ -5,10 +5,10 @@ from levels import calculate_support_resistance, calculate_trade_levels
 from market_state import detect_market_state
 
 
-def analyze_fast_strategy(symbol="BTCUSDT"):
-    price = float(get_ticker(symbol)["price"])
-    frame_4h = get_klines("240", 250, symbol)
-    frame_1h = get_klines("60", 250, symbol)
+def analyze_fast_strategy(symbol="BTCUSDT", exchange="bybit"):
+    price = float(get_ticker(symbol, exchange=exchange)["price"])
+    frame_4h = get_klines("240", 250, symbol, exchange=exchange)
+    frame_1h = get_klines("60", 250, symbol, exchange=exchange)
     ind_4h = analyze(frame_4h)
     ind_1h = analyze(frame_1h)
     market_state = detect_market_state(price, ind_4h, ind_1h)
@@ -162,7 +162,12 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
 
     return {
         "symbol": symbol,
-        "display_symbol": symbol.replace("USDT", "/USDT"),
+        "exchange": exchange,
+        "display_symbol": (
+            symbol.replace("USDT", "/USD (USDC)")
+            if exchange == "okx"
+            else symbol.replace("USDT", "/USDT")
+        ),
         "asset": symbol.replace("USDT", ""),
         "strategy_key": "fast",
         "strategy_name": "Fast",
