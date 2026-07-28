@@ -612,7 +612,7 @@ h1 {
     grid-template-columns:
         minmax(220px, 1.5fr)
         repeat(7, minmax(94px, 0.72fr))
-        minmax(170px, 1.1fr);
+        minmax(220px, 1.35fr);
     gap: 9px;
     padding: 8px;
     background: rgb(8 15 29 / 45%);
@@ -684,6 +684,14 @@ h1 {
     white-space: normal;
 }
 
+.market-decision-inline {
+    margin-top: 5px;
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
 .analytics-strip .grade-card .value {
     font-size: 24px;
 }
@@ -717,14 +725,7 @@ h1 {
 }
 
 .workspace {
-    --strategy-width: 285px;
-    display: grid;
-    grid-template-columns:
-        minmax(0, 1fr)
-        8px
-        minmax(265px, var(--strategy-width));
-    gap: 10px;
-    align-items: start;
+    display: block;
     margin-top: 32px;
 }
 
@@ -738,12 +739,7 @@ h1 {
 }
 
 .workspace-resizer {
-    align-self: stretch;
-    min-height: 590px;
-    cursor: col-resize;
-    touch-action: none;
-    border-radius: 999px;
-    transition: background 0.2s ease;
+    display: none;
 }
 
 .workspace-resizer::before {
@@ -1063,6 +1059,30 @@ body.is-resizing-workspace {
 
 .level-target-strong::before {
     background: #eab308;
+}
+
+.strategy-panel {
+    width: 100%;
+    margin-top: 14px;
+}
+
+.strategy-panel .section-title {
+    margin: 0 0 10px;
+    font-size: 15px;
+}
+
+.strategy-panel .levels {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.strategy-panel .level-card {
+    min-height: 118px;
+    padding: 14px 13px 12px 18px;
+}
+
+.strategy-panel .level-value {
+    font-size: 17px;
 }
 
 .level-actions {
@@ -2016,9 +2036,8 @@ body.is-resizing-column {
         display: none;
     }
 
-    .strategy-panel {
-        display: grid;
-        grid-template-columns: 1fr;
+    .strategy-panel .levels {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .levels {
@@ -2115,6 +2134,10 @@ body.is-resizing-column {
 
     .btc-chart {
         height: 440px;
+    }
+
+    .strategy-panel .levels {
+        grid-template-columns: 1fr;
     }
 }
 

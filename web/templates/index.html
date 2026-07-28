@@ -228,10 +228,21 @@
                         <div class="value">{{ result["rsi_4h"] }}</div>
                     </div>
 
-                    <div class="card metric-card">
-                        <div class="label">Режим рынка</div>
+                    <div class="card metric-card market-regime-card">
+                        <div class="label">Режим рынка · Решение</div>
                         <div class="value market-mode market-mode-{{ result.get('market_mode', 'RANGE')|lower }}">
                             {{ result.get("market_mode_label", result.get("market_mode", "—")) }}
+                        </div>
+                        <div class="market-decision-inline
+                            {% if is_skip %}
+                                status-skip
+                            {% elif is_wait %}
+                                status-wait
+                            {% else %}
+                                status-buy
+                            {% endif %}
+                        ">
+                            {{ result["decision"] }}
                         </div>
                         <div class="score-breakdown">
                             {{ result.get("market_mode_description", "") }}
@@ -347,29 +358,6 @@
                 ></div>
 
                 <aside class="strategy-panel">
-                    <div class="decision
-                        {% if is_skip %}
-                            decision-skip
-                        {% elif is_wait %}
-                            decision-wait
-                        {% else %}
-                            decision-buy
-                        {% endif %}
-                    ">
-                        <div class="label">Решение стратегии</div>
-                        <div class="decision-value
-                            {% if is_skip %}
-                                status-skip
-                            {% elif is_wait %}
-                                status-wait
-                            {% else %}
-                                status-buy
-                            {% endif %}
-                        ">
-                            {{ result["decision"] }}
-                        </div>
-                    </div>
-
                     <h2 class="section-title">Торговые уровни</h2>
 
                     <div class="levels">
