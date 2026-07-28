@@ -624,6 +624,7 @@
                 {% endif %}
             </section>
 
+            {% if active_exchange == "bybit" %}
             <section id="open-orders" class="open-orders-panel open-orders-below-chart">
                 <div class="open-orders-heading">
                     <div>
@@ -816,6 +817,7 @@
                     </table>
                 </div>
             </section>
+            {% endif %}
 
             {% if active_exchange == "okx" %}
             <section id="okx-open-orders" class="open-orders-panel open-orders-below-chart">
