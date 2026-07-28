@@ -13,11 +13,18 @@
 <body>
     <main class="container">
         <div class="dashboard-title-row">
-            <div>
-                <h1>{{ asset_info["icon"] }} {{ asset_info["asset"] }} AI Dashboard</h1>
-                <p class="strategy-description">
-                    {{ result.get("strategy_description", "") if result else "" }}
-                </p>
+            <div class="brand-lockup">
+                <div class="brand-mark" aria-hidden="true">
+                    <span class="brand-coin">₿</span>
+                    <span class="brand-ai">AI</span>
+                </div>
+                <div class="brand-copy">
+                    <span class="brand-eyebrow">Market intelligence</span>
+                    <h1>{{ asset_info["asset"] }} AI Dashboard</h1>
+                    <p class="strategy-description">
+                        {{ result.get("strategy_description", "") if result else "" }}
+                    </p>
+                </div>
             </div>
 
             <div class="dashboard-switchers">
@@ -28,13 +35,21 @@
                             class="exchange-button exchange-bybit {{ 'is-active' if active_exchange == 'bybit' else '' }}"
                             href="{{ url_for('home', symbol=active_symbol, strategy=active_strategy, exchange='bybit') }}"
                         >
-                            Bybit
+                            <span class="exchange-button-icon exchange-button-icon-bybit">B</span>
+                            <span>
+                                <strong>Bybit</strong>
+                                <small>USDT</small>
+                            </span>
                         </a>
                         <a
                             class="exchange-button exchange-okx {{ 'is-active' if active_exchange == 'okx' else '' }}"
                             href="{{ url_for('home', symbol=active_symbol, strategy=active_strategy, exchange='okx') }}"
                         >
-                            OKX
+                            <span class="exchange-button-icon exchange-button-icon-okx">O</span>
+                            <span>
+                                <strong>OKX</strong>
+                                <small>USDC</small>
+                            </span>
                         </a>
                     </nav>
                 </div>
@@ -86,22 +101,44 @@
                 {% if okx_account_error %}
                     <p class="exchange-account-error">{{ okx_account_error }}</p>
                 {% elif okx_account %}
-                    <div class="exchange-balances">
-                        <span class="exchange-balance">
-                            <strong>Всего ≈</strong>
-                            {{ "{:,.2f}".format(okx_account["total_usd"]) }} USD
-                        </span>
-                        {% for balance in okx_account["currencies"] %}
-                            <span class="exchange-balance">
-                                <strong>{{ balance["currency"] }}</strong>
-                                Всего:
-                                {{ "{:,.8f}".format(balance["total"]).rstrip("0").rstrip(".") }}
-                                · Доступно:
-                                {{ "{:,.8f}".format(balance["available"]).rstrip("0").rstrip(".") }}
-                            </span>
-                        {% else %}
-                            <span class="exchange-balance-empty">Ненулевые балансы не найдены</span>
-                        {% endfor %}
+                    <div class="portfolio-balance-area">
+                        <div class="portfolio-total">
+                            <span>Общий баланс</span>
+                            <strong>
+                                <small>≈</small>
+                                {{ "{:,.2f}".format(okx_account["total_usd"]) }}
+                                <em>USD</em>
+                            </strong>
+                        </div>
+
+                        <div class="balance-visibility-control">
+                            <label class="balance-filter-toggle" for="hide-small-balances">
+                                <input id="hide-small-balances" type="checkbox">
+                                <span class="balance-filter-switch" aria-hidden="true"></span>
+                                <span>Скрыть баланс меньше $1</span>
+                            </label>
+                        </div>
+
+                        <div id="exchange-balances" class="exchange-balances">
+                            {% for balance in okx_account["currencies"] %}
+                                <span
+                                    class="exchange-balance"
+                                    data-usd-value="{{ balance['usd_value'] }}"
+                                >
+                                    <span class="balance-currency">{{ balance["currency"] }}</span>
+                                    <span class="balance-amount">
+                                        {{ "{:,.8f}".format(balance["total"]).rstrip("0").rstrip(".") }}
+                                    </span>
+                                    <small>
+                                        Доступно:
+                                        {{ "{:,.8f}".format(balance["available"]).rstrip("0").rstrip(".") }}
+                                    </small>
+                                    <em>≈ ${{ "{:,.2f}".format(balance["usd_value"]) }}</em>
+                                </span>
+                            {% else %}
+                                <span class="exchange-balance-empty">Ненулевые балансы не найдены</span>
+                            {% endfor %}
+                        </div>
                     </div>
                 {% endif %}
             {% else %}

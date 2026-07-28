@@ -33,6 +33,64 @@ h1 {
     margin-bottom: 5px;
 }
 
+.brand-lockup {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.brand-mark {
+    position: relative;
+    display: grid;
+    width: 62px;
+    height: 62px;
+    place-items: center;
+    color: #ffffff;
+    background:
+        radial-gradient(circle at 30% 25%, rgb(96 165 250 / 42%), transparent 42%),
+        linear-gradient(145deg, #2563eb, #0f172a 75%);
+    border: 1px solid #60a5fa;
+    border-radius: 18px;
+    box-shadow:
+        0 14px 35px rgb(37 99 235 / 25%),
+        inset 0 1px 0 rgb(255 255 255 / 25%);
+}
+
+.brand-coin {
+    font-size: 31px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.brand-ai {
+    position: absolute;
+    right: -8px;
+    bottom: -7px;
+    padding: 4px 6px;
+    color: #052e2b;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    background: #5eead4;
+    border: 2px solid #111827;
+    border-radius: 7px;
+}
+
+.brand-copy h1 {
+    font-size: clamp(26px, 3vw, 36px);
+    letter-spacing: -0.035em;
+}
+
+.brand-eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    color: #60a5fa;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+}
+
 .strategy-description {
     margin: 0;
     color: #94a3b8;
@@ -61,24 +119,72 @@ h1 {
 
 .exchange-switcher {
     display: inline-flex;
-    gap: 4px;
-    padding: 4px;
-    background: #080f1d;
-    border: 1px solid #334155;
-    border-radius: 11px;
+    gap: 8px;
+    padding: 5px;
+    background: linear-gradient(180deg, #121c2f, #080f1d);
+    border: 1px solid #2c3d57;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 18%);
 }
 
 .exchange-button {
-    min-width: 82px;
-    padding: 8px 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-width: 112px;
+    padding: 8px 13px;
     color: #94a3b8;
     font-size: 13px;
     font-weight: 800;
     text-align: center;
     text-decoration: none;
     border: 1px solid transparent;
-    border-radius: 7px;
-    transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+    border-radius: 10px;
+    transition:
+        color 0.18s ease,
+        background 0.18s ease,
+        border-color 0.18s ease,
+        transform 0.18s ease;
+}
+
+.exchange-button:hover {
+    transform: translateY(-1px);
+}
+
+.exchange-button > span:last-child {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.05;
+}
+
+.exchange-button small {
+    margin-top: 3px;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+}
+
+.exchange-button-icon {
+    display: grid;
+    width: 25px;
+    height: 25px;
+    place-items: center;
+    font-size: 11px;
+    font-weight: 900;
+    border-radius: 8px;
+}
+
+.exchange-button-icon-bybit {
+    color: #451a03;
+    background: #f59e0b;
+}
+
+.exchange-button-icon-okx {
+    color: #0f172a;
+    background: #f8fafc;
 }
 
 .exchange-button:hover {
@@ -99,17 +205,20 @@ h1 {
 }
 
 .exchange-account-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
     gap: 18px;
-    min-height: 62px;
+    min-height: 92px;
     margin: -8px 0 20px;
-    padding: 13px 16px;
-    background: #172033;
-    border: 1px solid #334155;
+    padding: 18px;
+    background:
+        radial-gradient(circle at 90% 0%, rgb(37 99 235 / 10%), transparent 32%),
+        linear-gradient(135deg, #172033, #111a2b);
+    border: 1px solid #34445e;
     border-left-width: 4px;
-    border-radius: 11px;
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgb(0 0 0 / 15%);
 }
 
 .exchange-account-bybit {
@@ -123,8 +232,10 @@ h1 {
 .exchange-account-heading {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
     flex: 0 0 auto;
+    min-height: 47px;
 }
 
 .exchange-account-name {
@@ -166,24 +277,164 @@ h1 {
 }
 
 .exchange-balances {
-    display: flex;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 9px;
+    width: 100%;
 }
 
 .exchange-balance {
-    padding: 6px 9px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 3px 8px;
+    padding: 10px 12px;
     color: #cbd5e1;
     font-size: 12px;
-    background: #0f172a;
+    background: rgb(8 15 29 / 72%);
     border: 1px solid #334155;
-    border-radius: 7px;
+    border-radius: 10px;
+    transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.exchange-balance:hover {
+    border-color: #4f6b91;
+    transform: translateY(-1px);
 }
 
 .exchange-balance strong {
     margin-right: 5px;
     color: #f8fafc;
+}
+
+.portfolio-balance-area {
+    display: grid;
+    grid-template-columns: minmax(160px, auto) minmax(220px, 1fr);
+    gap: 12px 18px;
+    width: 100%;
+}
+
+.portfolio-total {
+    grid-row: 1 / span 2;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 180px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgb(37 99 235 / 28%), rgb(15 23 42 / 65%));
+    border: 1px solid #3b82f6;
+    border-radius: 13px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 8%);
+}
+
+.portfolio-total > span {
+    margin-bottom: 5px;
+    color: #93c5fd;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.portfolio-total strong {
+    color: #ffffff;
+    font-size: 25px;
+    line-height: 1.1;
+}
+
+.portfolio-total strong small {
+    color: #60a5fa;
+    font-size: 15px;
+}
+
+.portfolio-total strong em {
+    color: #93c5fd;
+    font-size: 11px;
+    font-style: normal;
+    letter-spacing: 0.08em;
+}
+
+.balance-visibility-control {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.balance-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+}
+
+.balance-filter-toggle input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.balance-filter-switch {
+    position: relative;
+    width: 34px;
+    height: 19px;
+    background: #334155;
+    border: 1px solid #475569;
+    border-radius: 999px;
+    transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.balance-filter-switch::after {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 13px;
+    height: 13px;
+    content: "";
+    background: #cbd5e1;
+    border-radius: 50%;
+    transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.balance-filter-toggle input:checked + .balance-filter-switch {
+    background: #2563eb;
+    border-color: #60a5fa;
+}
+
+.balance-filter-toggle input:checked + .balance-filter-switch::after {
+    background: #ffffff;
+    transform: translateX(15px);
+}
+
+.balance-currency {
+    color: #f8fafc;
+    font-size: 13px;
+    font-weight: 900;
+}
+
+.balance-amount {
+    color: #e2e8f0;
+    font-weight: 800;
+}
+
+.exchange-balance small {
+    color: #64748b;
+    font-size: 10px;
+}
+
+.exchange-balance em {
+    color: #5eead4;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 700;
+    text-align: right;
+}
+
+.exchange-balance[hidden] {
+    display: none;
 }
 
 .exchange-balance-empty {
@@ -1863,5 +2114,58 @@ body.is-resizing-column {
     .whale-summary,
     .whale-events {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 1050px) {
+    .exchange-account-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .portfolio-balance-area {
+        grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 700px) {
+    .brand-mark {
+        width: 54px;
+        height: 54px;
+        border-radius: 15px;
+    }
+
+    .brand-coin {
+        font-size: 27px;
+    }
+
+    .exchange-control {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .switcher-label {
+        align-self: flex-start;
+    }
+
+    .exchange-button {
+        min-width: 0;
+    }
+
+    .exchange-account-bar {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .portfolio-balance-area {
+        grid-template-columns: 1fr;
+    }
+
+    .portfolio-total {
+        grid-row: auto;
+        min-width: 0;
+    }
+
+    .balance-visibility-control {
+        justify-content: flex-start;
     }
 }

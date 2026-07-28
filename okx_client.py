@@ -185,6 +185,7 @@ class OkxReadOnlyClient:
                     "currency": detail.get("ccy"),
                     "total": total,
                     "available": available,
+                    "usd_value": float(detail.get("eqUsd") or 0),
                 }
             )
 

@@ -931,3 +931,28 @@
 
     initializeResizableOrderColumns();
 })();
+
+(function initializeBalanceVisibility() {
+    const toggle = document.getElementById("hide-small-balances");
+    const balances = Array.from(
+        document.querySelectorAll(".exchange-balance[data-usd-value]")
+    );
+
+    if (!toggle || balances.length === 0) {
+        return;
+    }
+
+    const storageKey = "okx-hide-small-balances";
+
+    function applyBalanceFilter() {
+        balances.forEach((balance) => {
+            const usdValue = Number(balance.dataset.usdValue || 0);
+            balance.hidden = toggle.checked && usdValue < 1;
+        });
+        localStorage.setItem(storageKey, toggle.checked ? "1" : "0");
+    }
+
+    toggle.checked = localStorage.getItem(storageKey) === "1";
+    toggle.addEventListener("change", applyBalanceFilter);
+    applyBalanceFilter();
+})();
