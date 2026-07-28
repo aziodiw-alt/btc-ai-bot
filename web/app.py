@@ -28,6 +28,7 @@ from dashboard_history import (
 from dashboard_trades import (
     add_pending_orders,
     add_trade,
+    add_okx_order_profit_estimates,
     calculate_okx_fifo_statistics,
     calculate_sell_advice,
     cancel_pending_order,
@@ -342,6 +343,10 @@ def home():
             okx_fifo = calculate_okx_fifo_statistics(
                 okx_trade_history,
                 okx_instrument,
+            )
+            okx_open_orders = add_okx_order_profit_estimates(
+                okx_open_orders,
+                okx_fifo,
             )
             pending_okx_sell_quantity = sum(
                 float(order.get("remaining_size") or 0)

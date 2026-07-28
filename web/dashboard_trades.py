@@ -171,6 +171,99 @@ def calculate_okx_fifo_statistics(trades, instrument):
     }
 
 
+def add_okx_order_profit_estimates(
+    orders,
+    fifo_stats,
+    fee_rate=DEFAULT_FEE_RATE,
+):
+    """Attach FIFO-based expected profit fields to pending OKX orders."""
+    enriched_orders = [dict(order) for order in (orders or [])]
+    open_quantity = max(
+        float(fifo_stats.get("open_quantity") or 0),
+        0,
+    )
+    open_cost = max(float(fifo_stats.get("open_cost") or 0), 0)
+    average_buy_price = (
+        open_cost / open_quantity
+        if open_quantity > 1e-12
+        else None
+    )
+    instrument = str(fifo_stats.get("instrument") or "").upper()
+    remaining_position = open_quantity
+
+    for order in enriched_orders:
+        order.update(
+            {
+                "estimated_profit_quote": None,
+                "estimated_profit_pct": None,
+                "average_buy_price": average_buy_price,
+                "matched_quantity": 0.0,
+                "profit_coverage_pct": 0.0,
+                "profit_is_complete": False,
+            }
+        )
+
+    sell_indices = sorted(
+        (
+            index
+            for index, order in enumerate(enriched_orders)
+            if str(order.get("side") or "").upper() == "SELL"
+            and (
+                not instrument
+                or str(order.get("instrument") or "").upper()
+                == instrument
+            )
+        ),
+        key=lambda index: str(
+            enriched_orders[index].get("created_at") or ""
+        ),
+    )
+
+    for index in sell_indices:
+        order = enriched_orders[index]
+        order_quantity = max(
+            float(order.get("remaining_size") or 0),
+            0,
+        )
+        order_price = max(float(order.get("price") or 0), 0)
+
+        if (
+            average_buy_price is None
+            or order_quantity <= 1e-12
+            or order_price <= 0
+        ):
+            continue
+
+        matched_quantity = min(order_quantity, remaining_position)
+        remaining_position = max(
+            remaining_position - matched_quantity,
+            0,
+        )
+        coverage_pct = matched_quantity / order_quantity * 100
+        is_complete = order_quantity - matched_quantity <= 1e-12
+
+        order["matched_quantity"] = matched_quantity
+        order["profit_coverage_pct"] = coverage_pct
+        order["profit_is_complete"] = is_complete
+
+        if matched_quantity <= 1e-12:
+            continue
+
+        matched_cost = matched_quantity * average_buy_price
+        net_proceeds = (
+            matched_quantity * order_price * (1 - fee_rate)
+        )
+        estimated_profit = net_proceeds - matched_cost
+        order["estimated_profit_quote"] = estimated_profit
+        order["estimated_profit_pct"] = (
+            estimated_profit / matched_cost * 100
+            if matched_cost > 0
+            else None
+        )
+
+    return enriched_orders
+
+
 def _connect():
     if not TELEGRAM_DATABASE_PATH.exists():
         raise ValueError(

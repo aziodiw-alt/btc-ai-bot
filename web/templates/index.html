@@ -885,6 +885,7 @@
                                     <th>Исполнено</th>
                                     <th>Осталось</th>
                                     <th>Сумма остатка</th>
+                                    <th>Ожидаемый результат</th>
                                     <th>Статус</th>
                                     <th>Order ID</th>
                                 </tr>
@@ -906,6 +907,37 @@
                                             {{ "{:,.2f}".format(order["remaining_value"]) }}
                                             {{ order["quote_currency"] }}
                                         </td>
+                                        <td class="order-result-cell">
+                                            {% if order["estimated_profit_quote"] is not none %}
+                                                <strong class="order-result-main {{ 'status-buy' if order['estimated_profit_quote'] >= 0 else 'status-skip' }}">
+                                                    {% if not order["profit_is_complete"] %}
+                                                        <small>Частичный расчёт</small>
+                                                    {% endif %}
+                                                    {{ "{:+.2f}".format(order["estimated_profit_quote"]) }}
+                                                    {{ order["quote_currency"] }}
+                                                    <em>
+                                                        {{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%
+                                                    </em>
+                                                </strong>
+                                                {% if not order["profit_is_complete"] %}
+                                                    <span class="order-result-detail">
+                                                        Покрытие покупками:
+                                                        {{ "%.1f"|format(order["profit_coverage_pct"]) }}%
+                                                    </span>
+                                                {% endif %}
+                                                <span class="order-result-detail">
+                                                    Средняя покупка
+                                                    {{ "{:,.2f}".format(order["average_buy_price"]) }}
+                                                    {{ order["quote_currency"] }}
+                                                </span>
+                                            {% elif order["side"] == "BUY" %}
+                                                <span class="table-muted">После исполнения</span>
+                                            {% else %}
+                                                <span class="table-muted">
+                                                    Нет связанной покупки в истории OKX
+                                                </span>
+                                            {% endif %}
+                                        </td>
                                         <td>
                                             <span class="history-status history-wait">
                                                 {{ order["state"] }}
@@ -915,7 +947,7 @@
                                     </tr>
                                 {% else %}
                                     <tr>
-                                        <td class="history-empty" colspan="11">
+                                        <td class="history-empty" colspan="12">
                                             На OKX сейчас нет открытых Spot-ордеров.
                                         </td>
                                     </tr>

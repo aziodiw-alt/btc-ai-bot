@@ -1,6 +1,7 @@
 import unittest
 
 from web.dashboard_trades import (
+    add_okx_order_profit_estimates,
     calculate_okx_fifo_statistics,
     calculate_sell_advice,
 )
@@ -77,6 +78,31 @@ class SellAdviceTests(unittest.TestCase):
         self.assertEqual(stats["execution_count"], 2)
         self.assertAlmostEqual(stats["open_quantity"], 0.00599)
         self.assertGreater(stats["open_cost"], 0)
+
+    def test_okx_open_sell_profit_uses_fifo_cost_and_fee(self):
+        orders = add_okx_order_profit_estimates(
+            [
+                {
+                    "side": "SELL",
+                    "price": 66000,
+                    "remaining_size": 0.006,
+                    "created_at": "2026-07-03T10:00:00+00:00",
+                }
+            ],
+            {
+                "open_quantity": 0.01,
+                "open_cost": 640,
+            },
+        )
+
+        order = orders[0]
+        expected_profit = 0.006 * 66000 * 0.999 - 0.006 * 64000
+        self.assertAlmostEqual(
+            order["estimated_profit_quote"],
+            expected_profit,
+        )
+        self.assertAlmostEqual(order["profit_coverage_pct"], 100)
+        self.assertTrue(order["profit_is_complete"])
 
 
 if __name__ == "__main__":
