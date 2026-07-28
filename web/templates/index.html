@@ -455,6 +455,74 @@
                 </aside>
             </section>
 
+            <section
+                id="profit-calculator"
+                class="profit-calculator"
+                data-market-price="{{ result['price'] }}"
+            >
+                <div class="profit-calculator-heading">
+                    <div>
+                        <span class="sell-advice-eyebrow">Своя цена или цена с биржи</span>
+                        <h2>Калькулятор продажи +1,5% / +2,0%</h2>
+                    </div>
+                    <button
+                        id="use-market-price"
+                        class="calculator-market-button"
+                        type="button"
+                    >
+                        Подставить цену с {{ active_exchange|upper }}
+                    </button>
+                </div>
+
+                <div class="profit-calculator-grid">
+                    <label class="calculator-input-card" for="profit-base-price">
+                        <span>Исходная цена</span>
+                        <div class="calculator-input-wrap">
+                            <input
+                                id="profit-base-price"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value="{{ result['price'] }}"
+                                inputmode="decimal"
+                            >
+                            <strong>{{ "USDC" if active_exchange == "okx" else "USDT" }}</strong>
+                        </div>
+                    </label>
+
+                    <div class="calculator-result-card calculator-result-15">
+                        <span>Цена +1,5%</span>
+                        <strong>
+                            <b id="calculator-target-15">—</b>
+                            {{ "USDC" if active_exchange == "okx" else "USDT" }}
+                        </strong>
+                        <button
+                            class="copy-level-button"
+                            type="button"
+                            data-copy-target="calculator-target-15"
+                        >Копировать</button>
+                    </div>
+
+                    <div class="calculator-result-card calculator-result-20">
+                        <span>Цена +2,0%</span>
+                        <strong>
+                            <b id="calculator-target-20">—</b>
+                            {{ "USDC" if active_exchange == "okx" else "USDT" }}
+                        </strong>
+                        <button
+                            class="copy-level-button"
+                            type="button"
+                            data-copy-target="calculator-target-20"
+                        >Копировать</button>
+                    </div>
+                </div>
+
+                <p class="sell-advice-note">
+                    Калькулятор считает проценты непосредственно от введённой цены.
+                    Комиссии здесь не вычитаются; расчёт чистой прибыли с комиссиями находится в блоке «Совет по продаже».
+                </p>
+            </section>
+
             {% if active_exchange == "bybit" %}
             <section class="sell-advice-panel">
                 <div class="sell-advice-heading">
@@ -483,7 +551,9 @@
                         <div class="sell-advice-card sell-advice-target">
                             <span>Продажа для чистых +1,5%</span>
                             <strong>
-                                {{ "{:,.0f}".format(sell_advice["target_price_15"]).replace(",", " ") }}
+                                <b id="sell-advice-target-15">
+                                    {{ "{:,.0f}".format(sell_advice["target_price_15"]).replace(",", " ") }}
+                                </b>
                                 USDT
                             </strong>
                             <small>
@@ -492,12 +562,19 @@
                                 · прибыль ≈
                                 {{ "%.2f"|format(sell_advice["profit_15"]) }} USDT
                             </small>
+                            <button
+                                class="copy-level-button sell-advice-copy"
+                                type="button"
+                                data-copy-target="sell-advice-target-15"
+                            >Копировать цену</button>
                         </div>
 
                         <div class="sell-advice-card sell-advice-target-strong">
                             <span>Продажа для чистых +2,0%</span>
                             <strong>
-                                {{ "{:,.0f}".format(sell_advice["target_price_20"]).replace(",", " ") }}
+                                <b id="sell-advice-target-20">
+                                    {{ "{:,.0f}".format(sell_advice["target_price_20"]).replace(",", " ") }}
+                                </b>
                                 USDT
                             </strong>
                             <small>
@@ -506,6 +583,11 @@
                                 · прибыль ≈
                                 {{ "%.2f"|format(sell_advice["profit_20"]) }} USDT
                             </small>
+                            <button
+                                class="copy-level-button sell-advice-copy"
+                                type="button"
+                                data-copy-target="sell-advice-target-20"
+                            >Копировать цену</button>
                         </div>
 
                         <div class="sell-advice-card sell-advice-position">

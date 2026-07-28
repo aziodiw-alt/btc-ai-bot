@@ -987,7 +987,10 @@
                 return;
             }
 
-            const value = target.textContent.replace(/\s+/g, "").trim();
+            const value = target.textContent
+                .replace(/\s+/g, "")
+                .replace(",", ".")
+                .trim();
 
             try {
                 await navigator.clipboard.writeText(value);
@@ -1003,4 +1006,52 @@
             }
         });
     });
+})();
+
+(function initializeProfitCalculator() {
+    const calculator = document.getElementById("profit-calculator");
+    const input = document.getElementById("profit-base-price");
+    const marketButton = document.getElementById("use-market-price");
+    const target15 = document.getElementById("calculator-target-15");
+    const target20 = document.getElementById("calculator-target-20");
+
+    if (!calculator || !input || !target15 || !target20) {
+        return;
+    }
+
+    const marketPrice = Number(calculator.dataset.marketPrice || 0);
+
+    function formatCalculatorPrice(value) {
+        return Number(value).toLocaleString("ru-RU", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    function updateCalculator() {
+        const basePrice = Number(input.value);
+
+        if (!Number.isFinite(basePrice) || basePrice <= 0) {
+            target15.textContent = "—";
+            target20.textContent = "—";
+            return;
+        }
+
+        target15.textContent = formatCalculatorPrice(basePrice * 1.015);
+        target20.textContent = formatCalculatorPrice(basePrice * 1.020);
+    }
+
+    input.addEventListener("input", updateCalculator);
+
+    if (marketButton) {
+        marketButton.addEventListener("click", () => {
+            if (marketPrice > 0) {
+                input.value = marketPrice.toFixed(2);
+                updateCalculator();
+                input.focus();
+            }
+        });
+    }
+
+    updateCalculator();
 })();
