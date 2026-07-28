@@ -67,11 +67,17 @@ def format_zone(zone):
 
 def format_analysis(result):
     display_symbol = result.get("display_symbol", "BTC/USDT")
+    exchange_name = (
+        "OKX"
+        if str(result.get("exchange", "bybit")).lower() == "okx"
+        else "Bybit"
+    )
     price_decimals = 2 if display_symbol.startswith("ETH") else 0
     reasons = "\n".join(f"• {item}" for item in result.get("reasons", []))
     warnings = "\n".join(f"• {item}" for item in result.get("warnings", []))
 
     return f"""📊 {display_symbol}
+🏦 Биржа: {exchange_name}
 
 💰 Цена: {format_number(result["price"], price_decimals)}
 
@@ -180,7 +186,9 @@ async def show_dashboard_orders(update: Update, exchange="bybit"):
 
         display_symbol = symbol.replace("USDT", "/USDT")
         price_decimals = 2 if symbol == "ETHUSDT" else 0
-        lines = [f"📋 {display_symbol} — {len(orders)}"]
+        lines = [
+            f"📋 BYBIT · {display_symbol} — {len(orders)}"
+        ]
 
         for order in orders:
             side = str(order.get("side", "")).upper()
@@ -226,7 +234,10 @@ async def show_dashboard_orders(update: Update, exchange="bybit"):
         blocks.append("\n\n".join(lines))
 
     if not blocks:
-        text = "📋 Открытых ордеров BTC/USDT и ETH/USDT сейчас нет."
+        text = (
+            "📋 Bybit: открытых ордеров BTC/USDT "
+            "и ETH/USDT сейчас нет."
+        )
     else:
         text = "\n\n────────────\n\n".join(blocks)
 
