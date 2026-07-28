@@ -28,6 +28,7 @@ from dashboard_history import (
 from dashboard_trades import (
     add_pending_orders,
     add_trade,
+    calculate_okx_fifo_statistics,
     calculate_sell_advice,
     cancel_pending_order,
     classify_unassigned_orders,
@@ -334,6 +335,26 @@ def home():
             okx_account = okx_client.connection_status()
             okx_open_orders = okx_client.get_open_orders()
             okx_trade_history = okx_client.get_trade_history()
+
+            okx_instrument = (
+                f"{asset_info['asset']}-USDC"
+            )
+            okx_fifo = calculate_okx_fifo_statistics(
+                okx_trade_history,
+                okx_instrument,
+            )
+            pending_okx_sell_quantity = sum(
+                float(order.get("remaining_size") or 0)
+                for order in okx_open_orders
+                if order.get("side") == "SELL"
+                and order.get("instrument") == okx_instrument
+            )
+            sell_advice = calculate_sell_advice(
+                okx_fifo,
+                current_price=result["price"] if result else None,
+                pending_sell_quantity=pending_okx_sell_quantity,
+                quote_currency="USDC",
+            )
         except Exception as exc:
             okx_account_error = str(exc)
 
@@ -378,11 +399,13 @@ def home():
             sell_quantity - matched_sell_quantity,
             0,
         )
-        sell_advice = calculate_sell_advice(
-            trades_data["bybit"],
-            current_price=current_price,
-            pending_sell_quantity=sell_quantity,
-        )
+        if active_exchange == "bybit":
+            sell_advice = calculate_sell_advice(
+                trades_data["bybit"],
+                current_price=current_price,
+                pending_sell_quantity=sell_quantity,
+                quote_currency="USDT",
+            )
         open_order_summary = {
             "count": len(open_orders),
             "buy_count": sum(

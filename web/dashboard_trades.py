@@ -34,6 +34,7 @@ def calculate_sell_advice(
     current_price=None,
     pending_sell_quantity=0,
     fee_rate=DEFAULT_FEE_RATE,
+    quote_currency="USDT",
 ):
     quantity = float(fifo_stats.get("open_quantity") or 0)
     open_cost = float(fifo_stats.get("open_cost") or 0)
@@ -61,6 +62,11 @@ def calculate_sell_advice(
         if current_price is not None
         else None
     )
+    free_value_usdt = (
+        free_quantity * market_price
+        if market_price and market_price > 0
+        else None
+    )
 
     return {
         "available": True,
@@ -73,6 +79,9 @@ def calculate_sell_advice(
         "profit_20": open_cost * 0.020,
         "reserved_quantity": reserved_quantity,
         "free_quantity": free_quantity,
+        "free_value_usdt": free_value_usdt,
+        "free_value_quote": free_value_usdt,
+        "quote_currency": str(quote_currency or "USDT").upper(),
         "current_price": market_price,
         "distance_15_pct": (
             (target_price_15 / market_price - 1) * 100
@@ -85,6 +94,80 @@ def calculate_sell_advice(
             else None
         ),
         "fee_rate": fee_rate,
+    }
+
+
+def calculate_okx_fifo_statistics(trades, instrument):
+    """Calculate the remaining spot position from normalized OKX fills."""
+    instrument = str(instrument or "").upper()
+    base_currency, _, quote_currency = instrument.partition("-")
+    lots = []
+    unmatched_sell_quantity = 0.0
+
+    matching_trades = sorted(
+        (
+            trade
+            for trade in (trades or [])
+            if str(trade.get("instrument") or "").upper() == instrument
+        ),
+        key=lambda trade: str(trade.get("created_at") or ""),
+    )
+
+    for trade in matching_trades:
+        side = str(trade.get("side") or "").upper()
+        size = max(float(trade.get("size") or 0), 0)
+        value = max(float(trade.get("value") or 0), 0)
+        fee = float(trade.get("fee") or 0)
+        fee_currency = str(trade.get("fee_currency") or "").upper()
+
+        if side == "BUY":
+            acquired_quantity = size
+            cost = value
+
+            if fee_currency == base_currency:
+                acquired_quantity = max(size + fee, 0)
+            elif fee_currency == quote_currency:
+                cost += abs(fee)
+
+            if acquired_quantity > 1e-12 and cost > 0:
+                lots.append(
+                    {
+                        "quantity": acquired_quantity,
+                        "unit_cost": cost / acquired_quantity,
+                    }
+                )
+            continue
+
+        if side != "SELL":
+            continue
+
+        quantity_to_remove = size
+        if fee_currency == base_currency:
+            quantity_to_remove += abs(fee)
+
+        while quantity_to_remove > 1e-12 and lots:
+            lot = lots[0]
+            matched = min(quantity_to_remove, lot["quantity"])
+            lot["quantity"] -= matched
+            quantity_to_remove -= matched
+
+            if lot["quantity"] <= 1e-12:
+                lots.pop(0)
+
+        unmatched_sell_quantity += max(quantity_to_remove, 0)
+
+    open_quantity = sum(lot["quantity"] for lot in lots)
+    open_cost = sum(
+        lot["quantity"] * lot["unit_cost"]
+        for lot in lots
+    )
+
+    return {
+        "instrument": instrument,
+        "execution_count": len(matching_trades),
+        "open_quantity": open_quantity,
+        "open_cost": open_cost,
+        "unmatched_sell_quantity": unmatched_sell_quantity,
     }
 
 

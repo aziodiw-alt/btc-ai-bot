@@ -523,7 +523,6 @@
                 </p>
             </section>
 
-            {% if active_exchange == "bybit" %}
             <section class="sell-advice-panel">
                 <div class="sell-advice-heading">
                     <div>
@@ -539,7 +538,7 @@
                             <span>Средняя себестоимость</span>
                             <strong>
                                 {{ "{:,.0f}".format(sell_advice["average_buy_price"]).replace(",", " ") }}
-                                USDT
+                                {{ sell_advice["quote_currency"] }}
                             </strong>
                             <small>
                                 Остаток:
@@ -560,7 +559,8 @@
                                 До цели:
                                 {{ "{:+.2f}".format(sell_advice["distance_15_pct"]) }}%
                                 · прибыль ≈
-                                {{ "%.2f"|format(sell_advice["profit_15"]) }} USDT
+                                {{ "%.2f"|format(sell_advice["profit_15"]) }}
+                                {{ sell_advice["quote_currency"] }}
                             </small>
                             <button
                                 class="copy-level-button sell-advice-copy"
@@ -575,13 +575,14 @@
                                 <b id="sell-advice-target-20">
                                     {{ "{:,.0f}".format(sell_advice["target_price_20"]).replace(",", " ") }}
                                 </b>
-                                USDT
+                                {{ sell_advice["quote_currency"] }}
                             </strong>
                             <small>
                                 До цели:
                                 {{ "{:+.2f}".format(sell_advice["distance_20_pct"]) }}%
                                 · прибыль ≈
-                                {{ "%.2f"|format(sell_advice["profit_20"]) }} USDT
+                                {{ "%.2f"|format(sell_advice["profit_20"]) }}
+                                {{ sell_advice["quote_currency"] }}
                             </small>
                             <button
                                 class="copy-level-button sell-advice-copy"
@@ -596,6 +597,13 @@
                                 {{ "%.8f"|format(sell_advice["free_quantity"]) }}
                                 {{ asset_info["asset"] }}
                             </strong>
+                            {% if sell_advice["free_value_quote"] is not none %}
+                            <small class="sell-advice-fiat-value">
+                                ≈
+                                {{ "{:,.2f}".format(sell_advice["free_value_quote"]).replace(",", " ") }}
+                                {{ sell_advice["quote_currency"] }}
+                            </small>
+                            {% endif %}
                             <small>
                                 Уже в SELL:
                                 {{ "%.8f"|format(sell_advice["reserved_quantity"]) }}
@@ -605,6 +613,9 @@
                     <p class="sell-advice-note">
                         Цена рассчитана по FIFO-себестоимости оставшихся покупок.
                         Комиссия покупки уже входит в себестоимость; комиссия будущей продажи учтена отдельно.
+                        {% if active_exchange == "okx" %}
+                            Использованы исполнения пары {{ asset_info["asset"] }}-USDC из истории OKX.
+                        {% endif %}
                     </p>
                 {% else %}
                     <div class="sell-advice-empty">
@@ -805,7 +816,6 @@
                     </table>
                 </div>
             </section>
-            {% endif %}
 
             {% if active_exchange == "okx" %}
             <section id="okx-open-orders" class="open-orders-panel open-orders-below-chart">
