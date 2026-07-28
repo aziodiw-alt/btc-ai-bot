@@ -707,6 +707,18 @@
                         class="history-table open-orders-table"
                         data-symbol="{{ active_symbol }}"
                     >
+                        <colgroup>
+                            <col class="order-column-date">
+                            <col class="order-column-side">
+                            <col class="order-column-strategy">
+                            <col class="order-column-price">
+                            <col class="order-column-quantity">
+                            <col class="order-column-value">
+                            <col class="order-column-distance">
+                            <col class="order-column-result">
+                            <col class="order-column-id">
+                            <col class="order-column-actions">
+                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Дата</th>
@@ -724,8 +736,8 @@
                         <tbody>
                             {% for order in open_orders %}
                                 <tr>
-                                    <td>{{ order["created_at"]|local_datetime }}</td>
-                                    <td class="{{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
+                                    <td class="order-date-cell">{{ order["created_at"]|local_datetime }}</td>
+                                    <td class="order-side-cell {{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
                                         {{ order["side"] }}
                                     </td>
                                     <td>
@@ -746,43 +758,46 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ "{:,.0f}".format(order["order_price"]).replace(",", " ") }}</td>
-                                    <td>{{ "%.8f"|format(order["order_quantity"]) }}</td>
-                                    <td>{{ "%.2f"|format(order["order_value"]) }} USDT</td>
-                                    <td>
+                                    <td class="order-number-cell">{{ "{:,.0f}".format(order["order_price"]).replace(",", " ") }}</td>
+                                    <td class="order-number-cell">{{ "%.8f"|format(order["order_quantity"]) }}</td>
+                                    <td class="order-value-cell">
+                                        <strong>{{ "%.2f"|format(order["order_value"]) }}</strong>
+                                        <small>USDT</small>
+                                    </td>
+                                    <td class="order-distance-cell">
                                         {% if order["distance_pct"] is not none %}
                                             {{ "%.2f"|format(order["distance_pct"]) }}%
                                         {% else %}
                                             —
                                         {% endif %}
                                     </td>
-                                    <td>
+                                    <td class="order-result-cell">
                                         {% if order["estimated_profit_usdt"] is not none %}
-                                            <span class="{{ 'status-buy' if order['estimated_profit_usdt'] >= 0 else 'status-skip' }}">
+                                            <strong class="order-result-main {{ 'status-buy' if order['estimated_profit_usdt'] >= 0 else 'status-skip' }}">
                                                 {% if not order["profit_is_complete"] %}
-                                                    Частично:
+                                                    <small>Частичный расчёт</small>
                                                 {% endif %}
                                                 {{ "{:+.2f}".format(order["estimated_profit_usdt"]) }} USDT
-                                                ({{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%)
-                                            </span>
+                                                <em>{{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%</em>
+                                            </strong>
                                             {% if not order["profit_is_complete"] %}
-                                                <small class="table-muted">
-                                                    Покрыто исполненными покупками:
+                                                <span class="order-result-detail">
+                                                    Покрытие покупками:
                                                     {{ "%.1f"|format(order["profit_coverage_pct"]) }}%
-                                                </small>
+                                                </span>
                                             {% endif %}
-                                            <small class="table-muted">
-                                                Средняя покупка:
+                                            <span class="order-result-detail">
+                                                Средняя покупка
                                                 {{ "{:,.0f}".format(order["average_buy_price"]).replace(",", " ") }}
-                                            </small>
+                                            </span>
                                         {% elif order["side"] == "BUY" %}
                                             <span class="table-muted">После исполнения</span>
                                         {% else %}
                                             <span class="table-muted">Нет связанной покупки</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ order["order_id"] or "—" }}</td>
-                                    <td>
+                                    <td class="order-id-cell">{{ order["order_id"] or "—" }}</td>
+                                    <td class="order-actions-cell">
                                         <form
                                             class="order-fill-form"
                                             method="post"

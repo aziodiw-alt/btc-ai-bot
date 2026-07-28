@@ -1273,15 +1273,117 @@ body.is-resizing-workspace {
 .open-orders-table {
     width: 100%;
     min-width: 0;
-    table-layout: auto;
+    table-layout: fixed;
 }
 
 .open-orders-table th,
 .open-orders-table td {
-    padding: 10px 8px;
-    font-size: 11px;
+    padding: 12px 9px;
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+.open-orders-table th {
     white-space: normal;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+}
+
+.order-column-date { width: 9%; }
+.order-column-side { width: 5.5%; }
+.order-column-strategy { width: 9.5%; }
+.order-column-price { width: 7%; }
+.order-column-quantity { width: 9%; }
+.order-column-value { width: 7%; }
+.order-column-distance { width: 8%; }
+.order-column-result { width: 25%; }
+.order-column-id { width: 7.5%; }
+.order-column-actions { width: 12.5%; }
+
+.order-date-cell,
+.order-side-cell,
+.order-number-cell,
+.order-distance-cell,
+.order-id-cell {
+    white-space: nowrap;
+}
+
+.order-number-cell,
+.order-value-cell,
+.order-distance-cell {
+    font-variant-numeric: tabular-nums;
+}
+
+.order-value-cell strong,
+.order-value-cell small {
+    display: block;
+}
+
+.order-value-cell small {
+    margin-top: 2px;
+    color: #94a3b8;
+    font-size: 10px;
+}
+
+.order-result-cell {
+    line-height: 1.3;
+}
+
+.order-result-main {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 3px 7px;
+    font-size: 13px;
+}
+
+.order-result-main small {
+    width: 100%;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.order-result-main em {
+    padding: 2px 6px;
+    color: inherit;
+    background: rgba(15, 23, 42, 0.55);
+    border-radius: 999px;
+    font-size: 10px;
+    font-style: normal;
+}
+
+.order-result-detail {
+    display: block;
+    margin-top: 4px;
+    color: #94a3b8;
+    font-size: 10px;
+}
+
+.order-actions-cell {
+    white-space: nowrap;
+}
+
+.order-actions-cell .order-fill-form,
+.order-actions-cell .order-cancel-form {
+    margin-right: 3px;
+}
+
+.order-actions-cell .order-filled-button,
+.order-actions-cell .order-cancelled-button {
+    padding: 6px 8px;
+    font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+    .history-table-scroll {
+        overflow-x: auto;
+    }
+
+    .open-orders-table {
+        min-width: 1080px;
+    }
 }
 
 .column-resizer {
