@@ -201,10 +201,9 @@
         createZone(
             levels.support_zone || levels.support,
             "zone-support",
-            "Поддержка"
+            "Поддержка / Buy Zone 1"
         );
         createZone(levels.resistance, "zone-resistance", "Сопротивление");
-        createZone(levels.buy_zone_1, "zone-buy", "Buy Zone 1");
         createZone(levels.buy_zone_2, "zone-buy", "Buy Zone 2");
 
         levelsInitialized = true;
@@ -243,6 +242,34 @@
             "stop-loss": formatLevel(levels.stop_loss),
             "take-profit-1": formatLevel(levels.take_profit_1),
             "take-profit-2": formatLevel(levels.take_profit_2)
+        };
+
+        Object.entries(values).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
+    }
+
+    function updateLegend(levels) {
+        const values = {
+            "legend-support": (
+                `Поддержка / Buy Zone 1: ${formatLevel(levels.buy_zone_1[0])}`
+                + ` – ${formatLevel(levels.buy_zone_1[1])}`
+            ),
+            "legend-resistance": (
+                `Сопротивление: ${formatLevel(levels.resistance)}`
+            ),
+            "legend-buy-zone-2": (
+                `Buy Zone 2: ${formatLevel(levels.buy_zone_2[0])}`
+                + ` – ${formatLevel(levels.buy_zone_2[1])}`
+            ),
+            "legend-targets": (
+                `SL ${formatLevel(levels.stop_loss)}`
+                + ` · TP1 ${formatLevel(levels.take_profit_1)}`
+                + ` · TP2 ${formatLevel(levels.take_profit_2)}`
+            )
         };
 
         Object.entries(values).forEach(([id, value]) => {
@@ -370,6 +397,7 @@
             initializeLevels(payload.levels);
             updateCurrentPrice(payload);
             updateLevelCards(payload.levels);
+            updateLegend(payload.levels);
             setActiveTimeframe(
                 payload.timeframe || timeframe,
                 payload.timeframe_label || label

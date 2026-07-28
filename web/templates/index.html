@@ -187,10 +187,39 @@
                     </div>
 
                     <div class="chart-legend" aria-label="Обозначения графика">
-                        <span><i class="legend-dot support"></i>Поддержка</span>
-                        <span><i class="legend-dot resistance"></i>Сопротивление</span>
-                        <span><i class="legend-dot buy"></i>Зоны покупки</span>
-                        <span><i class="legend-dot target"></i>TP / SL</span>
+                        <span>
+                            <i class="legend-dot support"></i>
+                            <span id="legend-support">
+                                Поддержка / Buy Zone 1:
+                                {{ "{:,.0f}".format(result["buy_zone_1"][0]).replace(",", " ") }}
+                                –
+                                {{ "{:,.0f}".format(result["buy_zone_1"][1]).replace(",", " ") }}
+                            </span>
+                        </span>
+                        <span>
+                            <i class="legend-dot resistance"></i>
+                            <span id="legend-resistance">
+                                Сопротивление:
+                                {{ "{:,.0f}".format(result["resistance"]).replace(",", " ") }}
+                            </span>
+                        </span>
+                        <span>
+                            <i class="legend-dot buy"></i>
+                            <span id="legend-buy-zone-2">
+                                Buy Zone 2:
+                                {{ "{:,.0f}".format(result["buy_zone_2"][0]).replace(",", " ") }}
+                                –
+                                {{ "{:,.0f}".format(result["buy_zone_2"][1]).replace(",", " ") }}
+                            </span>
+                        </span>
+                        <span>
+                            <i class="legend-dot target"></i>
+                            <span id="legend-targets">
+                                SL {{ "{:,.0f}".format(result["stop_loss"]).replace(",", " ") }}
+                                · TP1 {{ "{:,.0f}".format(result["take_profit_1"]).replace(",", " ") }}
+                                · TP2 {{ "{:,.0f}".format(result["take_profit_2"]).replace(",", " ") }}
+                            </span>
+                        </span>
                     </div>
                 </div>
 
