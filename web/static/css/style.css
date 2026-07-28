@@ -45,6 +45,152 @@ h1 {
     gap: 8px;
 }
 
+.exchange-control {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.switcher-label {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.exchange-switcher {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    background: #080f1d;
+    border: 1px solid #334155;
+    border-radius: 11px;
+}
+
+.exchange-button {
+    min-width: 82px;
+    padding: 8px 15px;
+    color: #94a3b8;
+    font-size: 13px;
+    font-weight: 800;
+    text-align: center;
+    text-decoration: none;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.exchange-button:hover {
+    color: #f8fafc;
+    background: #1e293b;
+}
+
+.exchange-bybit.is-active {
+    color: #fff7ed;
+    background: #b45309;
+    border-color: #f59e0b;
+}
+
+.exchange-okx.is-active {
+    color: #f8fafc;
+    background: #334155;
+    border-color: #cbd5e1;
+}
+
+.exchange-account-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    min-height: 62px;
+    margin: -8px 0 20px;
+    padding: 13px 16px;
+    background: #172033;
+    border: 1px solid #334155;
+    border-left-width: 4px;
+    border-radius: 11px;
+}
+
+.exchange-account-bybit {
+    border-left-color: #f59e0b;
+}
+
+.exchange-account-okx {
+    border-left-color: #e2e8f0;
+}
+
+.exchange-account-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.exchange-account-name {
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.connection-badge {
+    padding: 5px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 999px;
+}
+
+.connection-badge.is-connected {
+    color: #a7f3d0;
+    background: rgb(6 95 70 / 55%);
+}
+
+.connection-badge.is-error {
+    color: #fecaca;
+    background: rgb(127 29 29 / 55%);
+}
+
+.connection-badge.is-market {
+    color: #fde68a;
+    background: rgb(146 64 14 / 45%);
+}
+
+.exchange-account-note,
+.exchange-account-error {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+.exchange-account-error {
+    color: #fca5a5;
+}
+
+.exchange-balances {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.exchange-balance {
+    padding: 6px 9px;
+    color: #cbd5e1;
+    font-size: 12px;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 7px;
+}
+
+.exchange-balance strong {
+    margin-right: 5px;
+    color: #f8fafc;
+}
+
+.exchange-balance-empty {
+    color: #94a3b8;
+    font-size: 12px;
+}
+
 .asset-switcher {
     display: inline-flex;
     gap: 5px;
@@ -1684,6 +1830,32 @@ body.is-resizing-column {
 }
 
 @media (max-width: 700px) {
+    .exchange-control,
+    .exchange-account-bar {
+        width: 100%;
+    }
+
+    .exchange-control {
+        justify-content: space-between;
+    }
+
+    .exchange-switcher {
+        flex: 1;
+    }
+
+    .exchange-button {
+        flex: 1;
+    }
+
+    .exchange-account-bar {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .exchange-balances {
+        justify-content: flex-start;
+    }
+
     .whale-heading {
         flex-direction: column;
     }

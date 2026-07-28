@@ -166,6 +166,11 @@ def _normalize_symbol(value):
     return normalized if normalized in SUPPORTED_SYMBOLS else "BTCUSDT"
 
 
+def _normalize_exchange(value):
+    normalized = str(value or "bybit").strip().lower()
+    return normalized if normalized in {"bybit", "okx"} else "bybit"
+
+
 def _get_cached_strategy(strategy_name="swing", symbol="BTCUSDT"):
     strategy_name = _normalize_strategy_name(strategy_name)
     symbol = _normalize_symbol(symbol)
@@ -239,6 +244,9 @@ def _get_cached_candles(timeframe, symbol="BTCUSDT"):
 @app.route("/")
 def home():
     symbol = _normalize_symbol(request.args.get("symbol", "BTCUSDT"))
+    active_exchange = _normalize_exchange(
+        request.args.get("exchange", "bybit")
+    )
     asset_info = SUPPORTED_SYMBOLS[symbol]
     strategy_name = _normalize_strategy_name(
         request.args.get("strategy", "swing")
@@ -291,6 +299,14 @@ def home():
         },
     }
     trade_data_error = None
+    okx_account = None
+    okx_account_error = None
+
+    if active_exchange == "okx":
+        try:
+            okx_account = OkxReadOnlyClient().connection_status()
+        except Exception as exc:
+            okx_account_error = str(exc)
 
     try:
         current_price = result["price"] if result else None
@@ -368,6 +384,7 @@ def home():
         "index.html",
         result=result,
         active_symbol=symbol,
+        active_exchange=active_exchange,
         asset_info=asset_info,
         supported_symbols=SUPPORTED_SYMBOLS.values(),
         active_strategy=strategy_name,
@@ -392,6 +409,8 @@ def home():
         order_cancelled=request.args.get("order_cancelled") == "1",
         order_fill_error=request.args.get("order_fill_error"),
         trade_data_error=trade_data_error,
+        okx_account=okx_account,
+        okx_account_error=okx_account_error,
         error=error,
     )
 

@@ -21,11 +21,28 @@
             </div>
 
             <div class="dashboard-switchers">
+                <div class="exchange-control">
+                    <span class="switcher-label">Аккаунт биржи</span>
+                    <nav class="exchange-switcher" aria-label="Выбор биржи">
+                        <a
+                            class="exchange-button exchange-bybit {{ 'is-active' if active_exchange == 'bybit' else '' }}"
+                            href="{{ url_for('home', symbol=active_symbol, strategy=active_strategy, exchange='bybit') }}"
+                        >
+                            Bybit
+                        </a>
+                        <a
+                            class="exchange-button exchange-okx {{ 'is-active' if active_exchange == 'okx' else '' }}"
+                            href="{{ url_for('home', symbol=active_symbol, strategy=active_strategy, exchange='okx') }}"
+                        >
+                            OKX
+                        </a>
+                    </nav>
+                </div>
                 <nav class="asset-switcher" aria-label="Выбор валюты">
                     {% for asset in supported_symbols %}
                         <a
                             class="asset-button {{ 'is-active' if asset['symbol'] == active_symbol else '' }}"
-                            href="{{ url_for('home', symbol=asset['symbol'], strategy=active_strategy) }}"
+                            href="{{ url_for('home', symbol=asset['symbol'], strategy=active_strategy, exchange=active_exchange) }}"
                         >
                             {{ asset["icon"] }} {{ asset["asset"] }}
                         </a>
@@ -35,14 +52,14 @@
             <nav class="strategy-switcher" aria-label="Выбор стратегии">
                 <a
                     class="strategy-button {{ 'is-active' if active_strategy == 'swing' else '' }}"
-                    href="{{ url_for('home', symbol=active_symbol, strategy='swing') }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='swing', exchange=active_exchange) }}"
                 >
                     Swing
                     <small>1D + 4H</small>
                 </a>
                 <a
                     class="strategy-button strategy-fast {{ 'is-active' if active_strategy == 'fast' else '' }}"
-                    href="{{ url_for('home', symbol=active_symbol, strategy='fast') }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='fast', exchange=active_exchange) }}"
                 >
                     Fast
                     <small>4H + 1H · тест</small>
@@ -50,6 +67,42 @@
             </nav>
             </div>
         </div>
+
+        <section class="exchange-account-bar exchange-account-{{ active_exchange }}">
+            <div class="exchange-account-heading">
+                <span class="exchange-account-name">
+                    {{ "OKX" if active_exchange == "okx" else "Bybit" }}
+                </span>
+                {% if active_exchange == "okx" and okx_account and okx_account["connected"] %}
+                    <span class="connection-badge is-connected">Подключено · только чтение</span>
+                {% elif active_exchange == "okx" %}
+                    <span class="connection-badge is-error">Нет соединения</span>
+                {% else %}
+                    <span class="connection-badge is-market">Основная биржа</span>
+                {% endif %}
+            </div>
+
+            {% if active_exchange == "okx" %}
+                {% if okx_account_error %}
+                    <p class="exchange-account-error">{{ okx_account_error }}</p>
+                {% elif okx_account %}
+                    <div class="exchange-balances">
+                        {% for balance in okx_account["currencies"] %}
+                            <span class="exchange-balance">
+                                <strong>{{ balance["currency"] }}</strong>
+                                {{ "{:,.8f}".format(balance["total"]).rstrip("0").rstrip(".") }}
+                            </span>
+                        {% else %}
+                            <span class="exchange-balance-empty">Ненулевые балансы не найдены</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <p class="exchange-account-note">
+                    Анализ рынка и текущая история Bybit остаются без изменений.
+                </p>
+            {% endif %}
+        </section>
 
         {% if error %}
             <div class="error">
