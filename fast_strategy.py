@@ -1,11 +1,7 @@
 from indicators import analyze
 from market import get_klines, get_ticker
 from sentiment import get_sentiment
-
-
-def _levels(frame, lookback=80):
-    recent = frame.tail(lookback)
-    return float(recent["low"].min()), float(recent["high"].max())
+from levels import calculate_support_resistance, calculate_trade_levels
 
 
 def analyze_fast_strategy(symbol="BTCUSDT"):
@@ -14,7 +10,7 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
     frame_1h = get_klines("60", 250, symbol)
     ind_4h = analyze(frame_4h)
     ind_1h = analyze(frame_1h)
-    support, resistance = _levels(frame_1h)
+    support, resistance = calculate_support_resistance(frame_1h, lookback=80)
 
     trend_score = 0
     entry_score = 0
@@ -148,26 +144,13 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         grade = "SKIP"
         decision = "FAST SKIP — преимущества недостаточно"
 
-    buy_zone_1_high = round(price * 0.997, 2)
-    buy_zone_1_low = round(price * 0.994, 2)
-    buy_zone_2_high = round(price * 0.992, 2)
-    buy_zone_2_low = round(price * 0.988, 2)
-    planned_entry = buy_zone_1_high
-    stop_loss = round(max(support * 0.998, planned_entry * 0.993), 2)
-    safe_resistance = round(resistance * 0.998, 2)
-    take_profit_1 = round(
-        min(planned_entry * 1.008, safe_resistance),
-        2,
+    trade_levels = calculate_trade_levels(
+        price,
+        support,
+        resistance,
+        profile="fast",
     )
-    take_profit_2 = round(
-        min(planned_entry * 1.011, safe_resistance),
-        2,
-    )
-    available_profit_pct = (
-        (safe_resistance - planned_entry) / planned_entry * 100
-        if safe_resistance > planned_entry
-        else 0.0
-    )
+    available_profit_pct = trade_levels["available_profit_pct"]
 
     if grade in {"A", "A+"} and available_profit_pct < 0.8:
         grade = "B"
@@ -211,12 +194,12 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         ),
         "reasons": reasons,
         "warnings": warnings,
-        "buy_zone_1": [buy_zone_1_low, buy_zone_1_high],
-        "buy_zone_2": [buy_zone_2_low, buy_zone_2_high],
-        "stop_loss": stop_loss,
-        "take_profit_1": take_profit_1,
-        "take_profit_2": take_profit_2,
-        "planned_entry": planned_entry,
+        "buy_zone_1": trade_levels["buy_zone_1"],
+        "buy_zone_2": trade_levels["buy_zone_2"],
+        "stop_loss": trade_levels["stop_loss"],
+        "take_profit_1": trade_levels["take_profit_1"],
+        "take_profit_2": trade_levels["take_profit_2"],
+        "planned_entry": trade_levels["planned_entry"],
         "available_profit_pct": round(available_profit_pct, 2),
         "target_15_20_available": available_profit_pct >= 0.8,
     }

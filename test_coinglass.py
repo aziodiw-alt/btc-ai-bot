@@ -6,11 +6,13 @@ load_dotenv()
 
 API_KEY = os.getenv("COINGLASS_API_KEY")
 
+if not API_KEY:
+    raise RuntimeError("COINGLASS_API_KEY is not configured")
+
 url = "https://open-api-v4.coinglass.com/api/futures/global-long-short-account-ratio/history"
 
 headers = {
-print("API_KEY:", API_KEY)
-print("TYPE:", type(API_KEY))
+    "CG-API-KEY": API_KEY,
 }
 
 params = {

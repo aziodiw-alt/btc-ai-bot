@@ -99,6 +99,7 @@
 
     const zones = [];
     let levelsInitialized = false;
+    const levelPriceLines = [];
     let currentPriceLine = null;
     let currentRequestId = 0;
     let activeTimeframe = "240";
@@ -165,7 +166,10 @@
 
     function initializeLevels(levels) {
         if (levelsInitialized) {
-            return;
+            zones.forEach(({ element }) => element.remove());
+            zones.length = 0;
+            levelPriceLines.forEach((line) => candles.removePriceLine(line));
+            levelPriceLines.length = 0;
         }
 
         currentPriceLine = addPriceLine(
@@ -174,24 +178,25 @@
             "Цена",
             LightweightCharts.LineStyle.Solid
         );
-        addPriceLine(
+        levelPriceLines.push(currentPriceLine);
+        levelPriceLines.push(addPriceLine(
             levels.stop_loss,
             "#ef4444",
             "Stop",
             LightweightCharts.LineStyle.Dashed
-        );
-        addPriceLine(
+        ));
+        levelPriceLines.push(addPriceLine(
             levels.take_profit_1,
             "#fbbf24",
             "TP1",
             LightweightCharts.LineStyle.Dashed
-        );
-        addPriceLine(
+        ));
+        levelPriceLines.push(addPriceLine(
             levels.take_profit_2,
             "#f59e0b",
             "TP2",
             LightweightCharts.LineStyle.Dashed
-        );
+        ));
 
         createZone(levels.support, "zone-support", "Поддержка");
         createZone(levels.resistance, "zone-resistance", "Сопротивление");
@@ -202,8 +207,7 @@
     }
 
     function updateCurrentPrice(payload) {
-        const lastCandle = payload.candles[payload.candles.length - 1];
-        const currentPrice = Number(lastCandle && lastCandle.close);
+        const currentPrice = Number(payload.levels.current_price);
 
         if (!Number.isFinite(currentPrice)) {
             return;
@@ -219,6 +223,30 @@
         if (currentPriceLine) {
             currentPriceLine.applyOptions({ price: currentPrice });
         }
+    }
+
+    function formatLevel(value) {
+        return Number(value).toLocaleString("ru-RU", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
+
+    function updateLevelCards(levels) {
+        const values = {
+            "buy-zone-1": `${formatLevel(levels.buy_zone_1[0])} – ${formatLevel(levels.buy_zone_1[1])}`,
+            "buy-zone-2": `${formatLevel(levels.buy_zone_2[0])} – ${formatLevel(levels.buy_zone_2[1])}`,
+            "stop-loss": formatLevel(levels.stop_loss),
+            "take-profit-1": formatLevel(levels.take_profit_1),
+            "take-profit-2": formatLevel(levels.take_profit_2)
+        };
+
+        Object.entries(values).forEach(([id, value]) => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.textContent = value;
+            }
+        });
     }
 
     function setUpdateStatus(message, state = "ready") {
@@ -337,6 +365,7 @@
             candles.setData(payload.candles);
             initializeLevels(payload.levels);
             updateCurrentPrice(payload);
+            updateLevelCards(payload.levels);
             setActiveTimeframe(
                 payload.timeframe || timeframe,
                 payload.timeframe_label || label

@@ -233,7 +233,7 @@
                     <div class="levels">
                         <div class="card level-card level-buy">
                             <div class="label">Buy Zone 1</div>
-                            <div class="value level-value">
+                            <div id="buy-zone-1" class="value level-value">
                                 {{ "{:,.0f}".format(result["buy_zone_1"][0]).replace(",", " ") }}
                                 –
                                 {{ "{:,.0f}".format(result["buy_zone_1"][1]).replace(",", " ") }}
@@ -242,7 +242,7 @@
 
                         <div class="card level-card level-buy-secondary">
                             <div class="label">Buy Zone 2</div>
-                            <div class="value level-value">
+                            <div id="buy-zone-2" class="value level-value">
                                 {{ "{:,.0f}".format(result["buy_zone_2"][0]).replace(",", " ") }}
                                 –
                                 {{ "{:,.0f}".format(result["buy_zone_2"][1]).replace(",", " ") }}
@@ -251,21 +251,21 @@
 
                         <div class="card level-card level-stop">
                             <div class="label">Stop Loss</div>
-                            <div class="value level-value">
+                            <div id="stop-loss" class="value level-value">
                                 {{ "{:,.0f}".format(result["stop_loss"]).replace(",", " ") }}
                             </div>
                         </div>
 
                         <div class="card level-card level-target">
                             <div class="label">Take Profit 1</div>
-                            <div class="value level-value">
+                            <div id="take-profit-1" class="value level-value">
                                 {{ "{:,.0f}".format(result["take_profit_1"]).replace(",", " ") }}
                             </div>
                         </div>
 
                         <div class="card level-card level-target-strong">
                             <div class="label">Take Profit 2</div>
-                            <div class="value level-value">
+                            <div id="take-profit-2" class="value level-value">
                                 {{ "{:,.0f}".format(result["take_profit_2"]).replace(",", " ") }}
                             </div>
                         </div>
