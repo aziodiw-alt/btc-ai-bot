@@ -87,10 +87,17 @@
                     <p class="exchange-account-error">{{ okx_account_error }}</p>
                 {% elif okx_account %}
                     <div class="exchange-balances">
+                        <span class="exchange-balance">
+                            <strong>Всего ≈</strong>
+                            {{ "{:,.2f}".format(okx_account["total_usd"]) }} USD
+                        </span>
                         {% for balance in okx_account["currencies"] %}
                             <span class="exchange-balance">
                                 <strong>{{ balance["currency"] }}</strong>
+                                Всего:
                                 {{ "{:,.8f}".format(balance["total"]).rstrip("0").rstrip(".") }}
+                                · Доступно:
+                                {{ "{:,.8f}".format(balance["available"]).rstrip("0").rstrip(".") }}
                             </span>
                         {% else %}
                             <span class="exchange-balance-empty">Ненулевые балансы не найдены</span>
@@ -540,6 +547,165 @@
                         </tbody>
                     </table>
                 </div>
+            </section>
+            {% endif %}
+
+            {% if active_exchange == "okx" %}
+            <section id="okx-open-orders" class="open-orders-panel open-orders-below-chart">
+                <div class="open-orders-heading">
+                    <div>
+                        <h2 class="section-title">Открытые ордера OKX</h2>
+                        <p class="section-description">
+                            Активные и частично исполненные Spot-ордера, полученные напрямую через read-only API.
+                        </p>
+                    </div>
+                    <span class="connection-badge is-connected">
+                        Автоматическое чтение
+                    </span>
+                </div>
+
+                {% if okx_account_error %}
+                    <div class="form-message form-error">
+                        Не удалось получить ордера OKX: {{ okx_account_error }}
+                    </div>
+                {% else %}
+                    <div class="open-order-summary">
+                        <div class="open-order-summary-card">
+                            <span>Открытых ордеров</span>
+                            <strong>{{ okx_open_orders|length }}</strong>
+                        </div>
+                        <div class="open-order-summary-card">
+                            <span>BUY</span>
+                            <strong class="status-buy">
+                                {{ okx_open_orders|selectattr("side", "equalto", "BUY")|list|length }}
+                            </strong>
+                        </div>
+                        <div class="open-order-summary-card">
+                            <span>SELL</span>
+                            <strong class="status-skip">
+                                {{ okx_open_orders|selectattr("side", "equalto", "SELL")|list|length }}
+                            </strong>
+                        </div>
+                    </div>
+
+                    <div class="history-table-scroll">
+                        <table class="history-table open-orders-table">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Пара</th>
+                                    <th>Сторона</th>
+                                    <th>Тип</th>
+                                    <th>Цена</th>
+                                    <th>Количество</th>
+                                    <th>Исполнено</th>
+                                    <th>Осталось</th>
+                                    <th>Сумма остатка</th>
+                                    <th>Статус</th>
+                                    <th>Order ID</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in okx_open_orders %}
+                                    <tr>
+                                        <td>{{ order["created_at"]|local_datetime }}</td>
+                                        <td>{{ order["instrument"] }}</td>
+                                        <td class="{{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
+                                            {{ order["side"] }}
+                                        </td>
+                                        <td>{{ order["order_type"] }}</td>
+                                        <td>{{ "{:,.8f}".format(order["price"]).rstrip("0").rstrip(".") }}</td>
+                                        <td>{{ "{:,.8f}".format(order["size"]).rstrip("0").rstrip(".") }}</td>
+                                        <td>{{ "{:,.8f}".format(order["filled_size"]).rstrip("0").rstrip(".") }}</td>
+                                        <td>{{ "{:,.8f}".format(order["remaining_size"]).rstrip("0").rstrip(".") }}</td>
+                                        <td>
+                                            {{ "{:,.2f}".format(order["remaining_value"]) }}
+                                            {{ order["quote_currency"] }}
+                                        </td>
+                                        <td>
+                                            <span class="history-status history-wait">
+                                                {{ order["state"] }}
+                                            </span>
+                                        </td>
+                                        <td>{{ order["order_id"] }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td class="history-empty" colspan="11">
+                                            На OKX сейчас нет открытых Spot-ордеров.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </section>
+            {% endif %}
+
+            {% if active_exchange == "okx" %}
+            <section id="okx-trade-history" class="open-orders-panel open-orders-below-chart">
+                <div class="open-orders-heading">
+                    <div>
+                        <h2 class="section-title">История сделок OKX</h2>
+                        <p class="section-description">
+                            Исполненные Spot-покупки и продажи за последние 3 месяца.
+                        </p>
+                    </div>
+                    <span class="connection-badge is-connected">
+                        {{ okx_trade_history|length }} операций
+                    </span>
+                </div>
+
+                {% if okx_account_error %}
+                    <div class="form-message form-error">
+                        Не удалось получить историю OKX: {{ okx_account_error }}
+                    </div>
+                {% else %}
+                    <div class="history-table-scroll">
+                        <table class="history-table open-orders-table">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Пара</th>
+                                    <th>Сторона</th>
+                                    <th>Цена</th>
+                                    <th>Количество</th>
+                                    <th>Сумма</th>
+                                    <th>Комиссия</th>
+                                    <th>Trade ID</th>
+                                    <th>Order ID</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trade in okx_trade_history %}
+                                    <tr>
+                                        <td>{{ trade["created_at"]|local_datetime }}</td>
+                                        <td>{{ trade["instrument"] }}</td>
+                                        <td class="{{ 'status-buy' if trade['side'] == 'BUY' else 'status-skip' }}">
+                                            {{ trade["side"] }}
+                                        </td>
+                                        <td>{{ "{:,.8f}".format(trade["price"]).rstrip("0").rstrip(".") }}</td>
+                                        <td>{{ "{:,.8f}".format(trade["size"]).rstrip("0").rstrip(".") }}</td>
+                                        <td>{{ "{:,.2f}".format(trade["value"]) }}</td>
+                                        <td>
+                                            {{ "{:,.8f}".format(trade["fee"]).rstrip("0").rstrip(".") }}
+                                            {{ trade["fee_currency"] }}
+                                        </td>
+                                        <td>{{ trade["trade_id"] }}</td>
+                                        <td>{{ trade["order_id"] }}</td>
+                                    </tr>
+                                {% else %}
+                                    <tr>
+                                        <td class="history-empty" colspan="9">
+                                            На OKX пока нет исполненных Spot-сделок за последние 3 месяца.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
             </section>
             {% endif %}
 

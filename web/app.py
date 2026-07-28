@@ -301,10 +301,15 @@ def home():
     trade_data_error = None
     okx_account = None
     okx_account_error = None
+    okx_open_orders = []
+    okx_trade_history = []
 
     if active_exchange == "okx":
         try:
-            okx_account = OkxReadOnlyClient().connection_status()
+            okx_client = OkxReadOnlyClient()
+            okx_account = okx_client.connection_status()
+            okx_open_orders = okx_client.get_open_orders()
+            okx_trade_history = okx_client.get_trade_history()
         except Exception as exc:
             okx_account_error = str(exc)
 
@@ -411,6 +416,8 @@ def home():
         trade_data_error=trade_data_error,
         okx_account=okx_account,
         okx_account_error=okx_account_error,
+        okx_open_orders=okx_open_orders,
+        okx_trade_history=okx_trade_history,
         error=error,
     )
 

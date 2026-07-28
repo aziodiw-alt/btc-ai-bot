@@ -70,6 +70,64 @@ class OkxReadOnlyClientTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Invalid key"):
             self.client.get_account_config()
 
+    def test_open_spot_orders_are_normalized(self):
+        self.session.get.return_value = self._response(
+            {
+                "code": "0",
+                "data": [
+                    {
+                        "ordId": "123",
+                        "instId": "BTC-USDT",
+                        "side": "buy",
+                        "ordType": "limit",
+                        "px": "62000",
+                        "sz": "0.01",
+                        "accFillSz": "0.002",
+                        "state": "partially_filled",
+                        "cTime": "1700000000000",
+                    }
+                ],
+            }
+        )
+
+        orders = self.client.get_open_orders()
+
+        self.assertEqual(len(orders), 1)
+        self.assertEqual(orders[0]["side"], "BUY")
+        self.assertAlmostEqual(orders[0]["remaining_size"], 0.008)
+        self.assertAlmostEqual(orders[0]["remaining_value"], 496)
+        requested_url = self.session.get.call_args.args[0]
+        self.assertIn("orders-pending?instType=SPOT", requested_url)
+
+    def test_spot_trade_history_is_normalized(self):
+        self.session.get.return_value = self._response(
+            {
+                "code": "0",
+                "data": [
+                    {
+                        "tradeId": "trade-1",
+                        "ordId": "order-1",
+                        "instId": "BTC-USDT",
+                        "side": "buy",
+                        "fillPx": "64000",
+                        "fillSz": "0.001",
+                        "fee": "-0.000001",
+                        "feeCcy": "BTC",
+                        "fillTime": "1720000000000",
+                    }
+                ],
+            }
+        )
+
+        trades = self.client.get_trade_history()
+
+        self.assertEqual(len(trades), 1)
+        self.assertEqual(trades[0]["side"], "BUY")
+        self.assertEqual(trades[0]["value"], 64.0)
+        self.assertEqual(trades[0]["fee_currency"], "BTC")
+        requested_url = self.session.get.call_args.args[0]
+        self.assertIn("fills-history?instType=SPOT&limit=100", requested_url)
+
 
 if __name__ == "__main__":
     unittest.main()

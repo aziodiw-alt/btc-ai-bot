@@ -88,6 +88,88 @@ class OkxReadOnlyClient:
         data = self.get("/api/v5/account/balance")
         return data[0] if data else {}
 
+    def get_open_orders(self):
+        data = self.get(
+            "/api/v5/trade/orders-pending?instType=SPOT"
+        )
+        orders = []
+
+        for item in data:
+            instrument = str(item.get("instId") or "")
+            size = float(item.get("sz") or 0)
+            filled_size = float(item.get("accFillSz") or 0)
+            remaining_size = max(size - filled_size, 0)
+            price = float(item.get("px") or item.get("avgPx") or 0)
+            created_ms = int(item.get("cTime") or 0)
+            created_at = ""
+
+            if created_ms:
+                created_at = datetime.fromtimestamp(
+                    created_ms / 1000,
+                    tz=timezone.utc,
+                ).isoformat()
+
+            orders.append(
+                {
+                    "order_id": str(item.get("ordId") or ""),
+                    "instrument": instrument,
+                    "quote_currency": (
+                        instrument.rsplit("-", 1)[-1]
+                        if "-" in instrument
+                        else ""
+                    ),
+                    "side": str(item.get("side") or "").upper(),
+                    "order_type": str(item.get("ordType") or "").upper(),
+                    "price": price,
+                    "size": size,
+                    "filled_size": filled_size,
+                    "remaining_size": remaining_size,
+                    "remaining_value": price * remaining_size,
+                    "state": str(item.get("state") or "").upper(),
+                    "created_at": created_at,
+                }
+            )
+
+        return orders
+
+    def get_trade_history(self, limit=100):
+        data = self.get(
+            "/api/v5/trade/fills-history"
+            f"?instType=SPOT&limit={int(limit)}"
+        )
+        trades = []
+
+        for item in data:
+            price = float(item.get("fillPx") or 0)
+            size = float(item.get("fillSz") or 0)
+            created_ms = int(
+                item.get("fillTime") or item.get("ts") or 0
+            )
+            created_at = ""
+
+            if created_ms:
+                created_at = datetime.fromtimestamp(
+                    created_ms / 1000,
+                    tz=timezone.utc,
+                ).isoformat()
+
+            trades.append(
+                {
+                    "trade_id": str(item.get("tradeId") or ""),
+                    "order_id": str(item.get("ordId") or ""),
+                    "instrument": str(item.get("instId") or ""),
+                    "side": str(item.get("side") or "").upper(),
+                    "price": price,
+                    "size": size,
+                    "value": price * size,
+                    "fee": float(item.get("fee") or 0),
+                    "fee_currency": str(item.get("feeCcy") or ""),
+                    "created_at": created_at,
+                }
+            )
+
+        return trades
+
     def connection_status(self):
         config = self.get_account_config()
         balance = self.get_balance()
@@ -111,5 +193,6 @@ class OkxReadOnlyClient:
             "base_url": self.base_url,
             "permission": config.get("perm", ""),
             "account_type": config.get("acctLv", config.get("type", "")),
+            "total_usd": float(balance.get("totalEq") or 0),
             "currencies": currencies,
         }
