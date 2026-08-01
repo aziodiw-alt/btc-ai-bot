@@ -29,6 +29,241 @@ TELEGRAM_DATABASE_PATH = Path(
 )
 
 
+def calculate_sell_advice(
+    fifo_stats,
+    current_price=None,
+    pending_sell_quantity=0,
+    fee_rate=DEFAULT_FEE_RATE,
+    quote_currency="USDT",
+):
+    quantity = float(fifo_stats.get("open_quantity") or 0)
+    open_cost = float(fifo_stats.get("open_cost") or 0)
+
+    if quantity <= 1e-12 or open_cost <= 0:
+        return {
+            "available": False,
+            "reason": "Нет остатка исполненных покупок для расчёта.",
+        }
+
+    average_buy_price = open_cost / quantity
+    target_price_15 = (
+        average_buy_price * 1.015 / (1 - fee_rate)
+    )
+    target_price_20 = (
+        average_buy_price * 1.020 / (1 - fee_rate)
+    )
+    reserved_quantity = min(
+        max(float(pending_sell_quantity or 0), 0),
+        quantity,
+    )
+    free_quantity = max(quantity - reserved_quantity, 0)
+    market_price = (
+        float(current_price)
+        if current_price is not None
+        else None
+    )
+    free_value_usdt = (
+        free_quantity * market_price
+        if market_price and market_price > 0
+        else None
+    )
+
+    return {
+        "available": True,
+        "quantity": quantity,
+        "open_cost": open_cost,
+        "average_buy_price": average_buy_price,
+        "target_price_15": target_price_15,
+        "target_price_20": target_price_20,
+        "profit_15": open_cost * 0.015,
+        "profit_20": open_cost * 0.020,
+        "reserved_quantity": reserved_quantity,
+        "free_quantity": free_quantity,
+        "free_value_usdt": free_value_usdt,
+        "free_value_quote": free_value_usdt,
+        "quote_currency": str(quote_currency or "USDT").upper(),
+        "current_price": market_price,
+        "distance_15_pct": (
+            (target_price_15 / market_price - 1) * 100
+            if market_price and market_price > 0
+            else None
+        ),
+        "distance_20_pct": (
+            (target_price_20 / market_price - 1) * 100
+            if market_price and market_price > 0
+            else None
+        ),
+        "fee_rate": fee_rate,
+    }
+
+
+def calculate_okx_fifo_statistics(trades, instrument):
+    """Calculate the remaining spot position from normalized OKX fills."""
+    instrument = str(instrument or "").upper()
+    base_currency, _, quote_currency = instrument.partition("-")
+    lots = []
+    unmatched_sell_quantity = 0.0
+
+    matching_trades = sorted(
+        (
+            trade
+            for trade in (trades or [])
+            if str(trade.get("instrument") or "").upper() == instrument
+        ),
+        key=lambda trade: str(trade.get("created_at") or ""),
+    )
+
+    for trade in matching_trades:
+        side = str(trade.get("side") or "").upper()
+        size = max(float(trade.get("size") or 0), 0)
+        value = max(float(trade.get("value") or 0), 0)
+        fee = float(trade.get("fee") or 0)
+        fee_currency = str(trade.get("fee_currency") or "").upper()
+
+        if side == "BUY":
+            acquired_quantity = size
+            cost = value
+
+            if fee_currency == base_currency:
+                acquired_quantity = max(size + fee, 0)
+            elif fee_currency == quote_currency:
+                cost += abs(fee)
+
+            if acquired_quantity > 1e-12 and cost > 0:
+                lots.append(
+                    {
+                        "quantity": acquired_quantity,
+                        "unit_cost": cost / acquired_quantity,
+                    }
+                )
+            continue
+
+        if side != "SELL":
+            continue
+
+        quantity_to_remove = size
+        if fee_currency == base_currency:
+            quantity_to_remove += abs(fee)
+
+        while quantity_to_remove > 1e-12 and lots:
+            lot = lots[0]
+            matched = min(quantity_to_remove, lot["quantity"])
+            lot["quantity"] -= matched
+            quantity_to_remove -= matched
+
+            if lot["quantity"] <= 1e-12:
+                lots.pop(0)
+
+        unmatched_sell_quantity += max(quantity_to_remove, 0)
+
+    open_quantity = sum(lot["quantity"] for lot in lots)
+    open_cost = sum(
+        lot["quantity"] * lot["unit_cost"]
+        for lot in lots
+    )
+
+    return {
+        "instrument": instrument,
+        "execution_count": len(matching_trades),
+        "open_quantity": open_quantity,
+        "open_cost": open_cost,
+        "unmatched_sell_quantity": unmatched_sell_quantity,
+    }
+
+
+def add_okx_order_profit_estimates(
+    orders,
+    fifo_stats,
+    fee_rate=DEFAULT_FEE_RATE,
+):
+    """Attach FIFO-based expected profit fields to pending OKX orders."""
+    enriched_orders = [dict(order) for order in (orders or [])]
+    open_quantity = max(
+        float(fifo_stats.get("open_quantity") or 0),
+        0,
+    )
+    open_cost = max(float(fifo_stats.get("open_cost") or 0), 0)
+    average_buy_price = (
+        open_cost / open_quantity
+        if open_quantity > 1e-12
+        else None
+    )
+    instrument = str(fifo_stats.get("instrument") or "").upper()
+    remaining_position = open_quantity
+
+    for order in enriched_orders:
+        order.update(
+            {
+                "estimated_profit_quote": None,
+                "estimated_profit_pct": None,
+                "average_buy_price": average_buy_price,
+                "matched_quantity": 0.0,
+                "profit_coverage_pct": 0.0,
+                "profit_is_complete": False,
+            }
+        )
+
+    sell_indices = sorted(
+        (
+            index
+            for index, order in enumerate(enriched_orders)
+            if str(order.get("side") or "").upper() == "SELL"
+            and (
+                not instrument
+                or str(order.get("instrument") or "").upper()
+                == instrument
+            )
+        ),
+        key=lambda index: str(
+            enriched_orders[index].get("created_at") or ""
+        ),
+    )
+
+    for index in sell_indices:
+        order = enriched_orders[index]
+        order_quantity = max(
+            float(order.get("remaining_size") or 0),
+            0,
+        )
+        order_price = max(float(order.get("price") or 0), 0)
+
+        if (
+            average_buy_price is None
+            or order_quantity <= 1e-12
+            or order_price <= 0
+        ):
+            continue
+
+        matched_quantity = min(order_quantity, remaining_position)
+        remaining_position = max(
+            remaining_position - matched_quantity,
+            0,
+        )
+        coverage_pct = matched_quantity / order_quantity * 100
+        is_complete = order_quantity - matched_quantity <= 1e-12
+
+        order["matched_quantity"] = matched_quantity
+        order["profit_coverage_pct"] = coverage_pct
+        order["profit_is_complete"] = is_complete
+
+        if matched_quantity <= 1e-12:
+            continue
+
+        matched_cost = matched_quantity * average_buy_price
+        net_proceeds = (
+            matched_quantity * order_price * (1 - fee_rate)
+        )
+        estimated_profit = net_proceeds - matched_cost
+        order["estimated_profit_quote"] = estimated_profit
+        order["estimated_profit_pct"] = (
+            estimated_profit / matched_cost * 100
+            if matched_cost > 0
+            else None
+        )
+
+    return enriched_orders
+
+
 def _connect():
     if not TELEGRAM_DATABASE_PATH.exists():
         raise ValueError(
@@ -1088,6 +1323,7 @@ def get_pending_orders(
     )
 
     items = []
+    remaining_open_quantity = open_quantity
 
     for row in rows:
         order = dict(row)
@@ -1100,6 +1336,15 @@ def get_pending_orders(
         order["estimated_profit_pct"] = None
         order["estimated_cost_usdt"] = None
         order["matched_quantity"] = 0.0
+        order["unmatched_quantity"] = 0.0
+        order["profit_coverage_pct"] = None
+        order["profit_is_complete"] = False
+        order["average_buy_price"] = (
+            average_buy_price if side == "SELL" else None
+        )
+        if side == "SELL":
+            order["unmatched_quantity"] = order_quantity
+            order["profit_coverage_pct"] = 0.0
 
         if market_price and market_price > 0:
             if side == "BUY":
@@ -1119,21 +1364,39 @@ def get_pending_orders(
             side == "SELL"
             and average_buy_price is not None
             and order_quantity > 0
+            and remaining_open_quantity > 1e-12
         ):
-            matched_quantity = min(order_quantity, open_quantity)
+            matched_quantity = min(
+                order_quantity,
+                remaining_open_quantity,
+            )
+            remaining_open_quantity = max(
+                remaining_open_quantity - matched_quantity,
+                0,
+            )
             entry_value = matched_quantity * average_buy_price
             exit_value = matched_quantity * order_price
-            estimated_fees = (
-                entry_value * DEFAULT_FEE_RATE
-                + exit_value * DEFAULT_FEE_RATE
-            )
+            # average_buy_price is derived from FIFO unit_cost, which
+            # already includes the entry fee. Only the future sell fee
+            # must be subtracted here.
+            estimated_sell_fee = exit_value * DEFAULT_FEE_RATE
             estimated_profit = (
                 exit_value
                 - entry_value
-                - estimated_fees
+                - estimated_sell_fee
             )
 
             order["matched_quantity"] = matched_quantity
+            order["unmatched_quantity"] = max(
+                order_quantity - matched_quantity,
+                0,
+            )
+            order["profit_coverage_pct"] = (
+                matched_quantity / order_quantity * 100
+            )
+            order["profit_is_complete"] = (
+                order["unmatched_quantity"] <= 1e-12
+            )
             order["estimated_cost_usdt"] = entry_value
             order["estimated_profit_usdt"] = estimated_profit
             order["estimated_profit_pct"] = (

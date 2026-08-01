@@ -19,7 +19,7 @@ if BASE_DIR not in sys.path:
 from market import get_klines
 from strategy import analyze_strategy
 from fast_strategy import analyze_fast_strategy
-from alpha_strategy import analyze_alpha_strategy
+from okx_client import OkxReadOnlyClient
 from dashboard_history import (
     get_dashboard_history,
     get_strategy_comparison,
@@ -28,6 +28,9 @@ from dashboard_history import (
 from dashboard_trades import (
     add_pending_orders,
     add_trade,
+    add_okx_order_profit_estimates,
+    calculate_okx_fifo_statistics,
+    calculate_sell_advice,
     cancel_pending_order,
     classify_unassigned_orders,
     fill_pending_order,
@@ -104,6 +107,20 @@ def health():
     return {"status": "ok"}
 
 
+@app.route("/api/okx/status")
+def okx_status():
+    try:
+        status = OkxReadOnlyClient().connection_status()
+        return jsonify(status)
+    except Exception as error:
+        return jsonify(
+            {
+                "connected": False,
+                "error": str(error),
+            }
+        ), 502
+
+
 @app.template_filter("local_datetime")
 def local_datetime(value):
     if not value:
@@ -144,8 +161,7 @@ def _unix_seconds(value):
 
 
 def _normalize_strategy_name(value):
-    normalized = str(value).lower()
-    return normalized if normalized in {"swing", "fast", "alpha"} else "swing"
+    return "fast" if str(value).lower() == "fast" else "swing"
 
 
 def _normalize_symbol(value):
@@ -153,10 +169,20 @@ def _normalize_symbol(value):
     return normalized if normalized in SUPPORTED_SYMBOLS else "BTCUSDT"
 
 
-def _get_cached_strategy(strategy_name="swing", symbol="BTCUSDT"):
+def _normalize_exchange(value):
+    normalized = str(value or "bybit").strip().lower()
+    return normalized if normalized in {"bybit", "okx"} else "bybit"
+
+
+def _get_cached_strategy(
+    strategy_name="swing",
+    symbol="BTCUSDT",
+    exchange="bybit",
+):
     strategy_name = _normalize_strategy_name(strategy_name)
     symbol = _normalize_symbol(symbol)
-    cache_key = (symbol, strategy_name)
+    exchange = _normalize_exchange(exchange)
+    cache_key = (exchange, symbol, strategy_name)
     now = time.monotonic()
 
     with _cache_lock:
@@ -168,11 +194,9 @@ def _get_cached_strategy(strategy_name="swing", symbol="BTCUSDT"):
             return cached_value
 
         if strategy_name == "fast":
-            result = analyze_fast_strategy(symbol)
-        elif strategy_name == "alpha":
-            result = analyze_alpha_strategy(symbol)
+            result = analyze_fast_strategy(symbol, exchange=exchange)
         else:
-            result = analyze_strategy(symbol)
+            result = analyze_strategy(symbol, exchange=exchange)
             result.setdefault("strategy_key", "swing")
             result.setdefault("strategy_name", "Swing")
             result.setdefault(
@@ -195,9 +219,14 @@ def _get_cached_strategy(strategy_name="swing", symbol="BTCUSDT"):
         return result
 
 
-def _get_cached_candles(timeframe, symbol="BTCUSDT"):
+def _get_cached_candles(
+    timeframe,
+    symbol="BTCUSDT",
+    exchange="bybit",
+):
     symbol = _normalize_symbol(symbol)
-    cache_key = (symbol, timeframe)
+    exchange = _normalize_exchange(exchange)
+    cache_key = (exchange, symbol, timeframe)
     now = time.monotonic()
 
     with _cache_lock:
@@ -206,7 +235,12 @@ def _get_cached_candles(timeframe, symbol="BTCUSDT"):
         if cached and now - cached["created_at"] < CANDLE_CACHE_TTL:
             return cached["value"]
 
-        frame = get_klines(timeframe, 250, symbol)
+        frame = get_klines(
+            timeframe,
+            250,
+            symbol,
+            exchange=exchange,
+        )
         candles = [
             {
                 "time": _unix_seconds(row.time),
@@ -228,12 +262,19 @@ def _get_cached_candles(timeframe, symbol="BTCUSDT"):
 @app.route("/")
 def home():
     symbol = _normalize_symbol(request.args.get("symbol", "BTCUSDT"))
+    active_exchange = _normalize_exchange(
+        request.args.get("exchange", "bybit")
+    )
     asset_info = SUPPORTED_SYMBOLS[symbol]
     strategy_name = _normalize_strategy_name(
         request.args.get("strategy", "swing")
     )
     try:
-        result = _get_cached_strategy(strategy_name, symbol)
+        result = _get_cached_strategy(
+            strategy_name,
+            symbol,
+            active_exchange,
+        )
         history_data = get_dashboard_history(
             strategy_name=strategy_name,
             symbol=asset_info["display"],
@@ -280,6 +321,47 @@ def home():
         },
     }
     trade_data_error = None
+    okx_account = None
+    okx_account_error = None
+    okx_open_orders = []
+    okx_trade_history = []
+    sell_advice = {
+        "available": False,
+        "reason": "Нет данных для расчёта.",
+    }
+
+    if active_exchange == "okx":
+        try:
+            okx_client = OkxReadOnlyClient()
+            okx_account = okx_client.connection_status()
+            okx_open_orders = okx_client.get_open_orders()
+            okx_trade_history = okx_client.get_trade_history()
+
+            okx_instrument = (
+                f"{asset_info['asset']}-USDC"
+            )
+            okx_fifo = calculate_okx_fifo_statistics(
+                okx_trade_history,
+                okx_instrument,
+            )
+            okx_open_orders = add_okx_order_profit_estimates(
+                okx_open_orders,
+                okx_fifo,
+            )
+            pending_okx_sell_quantity = sum(
+                float(order.get("remaining_size") or 0)
+                for order in okx_open_orders
+                if order.get("side") == "SELL"
+                and order.get("instrument") == okx_instrument
+            )
+            sell_advice = calculate_sell_advice(
+                okx_fifo,
+                current_price=result["price"] if result else None,
+                pending_sell_quantity=pending_okx_sell_quantity,
+                quote_currency="USDC",
+            )
+        except Exception as exc:
+            okx_account_error = str(exc)
 
     try:
         current_price = result["price"] if result else None
@@ -287,7 +369,6 @@ def home():
             strategy_levels = {
                 "swing": _get_cached_strategy("swing", symbol),
                 "fast": _get_cached_strategy("fast", symbol),
-                "alpha": _get_cached_strategy("alpha", symbol),
             }
             classify_unassigned_orders(strategy_levels, symbol)
         trades_data = get_trades(current_price, symbol=symbol)
@@ -309,6 +390,27 @@ def home():
             for order in open_orders
             if order["estimated_cost_usdt"] is not None
         )
+        sell_quantity = sum(
+            float(order["order_quantity"])
+            for order in open_orders
+            if order["side"] == "SELL"
+        )
+        matched_sell_quantity = sum(
+            float(order["matched_quantity"])
+            for order in open_orders
+            if order["side"] == "SELL"
+        )
+        unmatched_sell_quantity = max(
+            sell_quantity - matched_sell_quantity,
+            0,
+        )
+        if active_exchange == "bybit":
+            sell_advice = calculate_sell_advice(
+                trades_data["bybit"],
+                current_price=current_price,
+                pending_sell_quantity=sell_quantity,
+                quote_currency="USDT",
+            )
         open_order_summary = {
             "count": len(open_orders),
             "buy_count": sum(
@@ -333,6 +435,17 @@ def home():
                 if expected_cost > 0
                 else None
             ),
+            "profit_coverage_pct": (
+                matched_sell_quantity / sell_quantity * 100
+                if sell_quantity > 0
+                else None
+            ),
+            "profit_is_complete": (
+                sell_quantity > 0
+                and unmatched_sell_quantity <= 1e-12
+            ),
+            "matched_sell_quantity": matched_sell_quantity,
+            "unmatched_sell_quantity": unmatched_sell_quantity,
             "calculated_sell_count": sum(
                 order["estimated_profit_usdt"] is not None
                 for order in open_orders
@@ -351,6 +464,10 @@ def home():
             "sell_value": 0,
             "expected_profit": 0,
             "expected_profit_pct": None,
+            "profit_coverage_pct": None,
+            "profit_is_complete": False,
+            "matched_sell_quantity": 0,
+            "unmatched_sell_quantity": 0,
             "calculated_sell_count": 0,
         }
 
@@ -358,6 +475,7 @@ def home():
         "index.html",
         result=result,
         active_symbol=symbol,
+        active_exchange=active_exchange,
         asset_info=asset_info,
         supported_symbols=SUPPORTED_SYMBOLS.values(),
         active_strategy=strategy_name,
@@ -371,6 +489,7 @@ def home():
         trade_stats=trades_data["stats"],
         open_orders=open_orders,
         open_order_summary=open_order_summary,
+        sell_advice=sell_advice,
         default_trade_date=datetime.now().strftime("%Y-%m-%dT%H:%M"),
         trade_added=request.args.get("trade_added") == "1",
         trade_error=request.args.get("trade_error"),
@@ -382,6 +501,10 @@ def home():
         order_cancelled=request.args.get("order_cancelled") == "1",
         order_fill_error=request.args.get("order_fill_error"),
         trade_data_error=trade_data_error,
+        okx_account=okx_account,
+        okx_account_error=okx_account_error,
+        okx_open_orders=okx_open_orders,
+        okx_trade_history=okx_trade_history,
         error=error,
     )
 
@@ -445,7 +568,6 @@ def orders_page():
             strategy_levels = {
                 "swing": _get_cached_strategy("swing", symbol),
                 "fast": _get_cached_strategy("fast", symbol),
-                "alpha": _get_cached_strategy("alpha", symbol),
             }
             classify_unassigned_orders(strategy_levels, symbol)
         orders = get_pending_orders(symbol=symbol)
@@ -514,7 +636,6 @@ def save_orders():
         strategy_levels = {
             "swing": _get_cached_strategy("swing", symbol),
             "fast": _get_cached_strategy("fast", symbol),
-            "alpha": _get_cached_strategy("alpha", symbol),
         }
         report = add_pending_orders(
             orders,
@@ -614,18 +735,36 @@ def chart_data():
         strategy_name = _normalize_strategy_name(
             request.args.get("strategy", "swing")
         )
-        candles = _get_cached_candles(requested_timeframe, symbol)
-        result = _get_cached_strategy(strategy_name, symbol)
+        exchange = _normalize_exchange(
+            request.args.get("exchange", "bybit")
+        )
+        candles = _get_cached_candles(
+            requested_timeframe,
+            symbol,
+            exchange,
+        )
+        result = _get_cached_strategy(
+            strategy_name,
+            symbol,
+            exchange,
+        )
 
         return jsonify(
             {
                 "candles": candles,
                 "symbol": symbol,
+                "exchange": exchange,
+                "display_symbol": (
+                    symbol.replace("USDT", "/USD (USDC)")
+                    if exchange == "okx"
+                    else symbol.replace("USDT", "/USDT")
+                ),
                 "timeframe": requested_timeframe,
                 "timeframe_label": allowed_timeframes[requested_timeframe],
                 "levels": {
                     "current_price": result["price"],
                     "support": result["support"],
+                    "support_zone": result.get("support_zone"),
                     "resistance": result["resistance"],
                     "buy_zone_1": result["buy_zone_1"],
                     "buy_zone_2": result["buy_zone_2"],

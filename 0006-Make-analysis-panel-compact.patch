@@ -1,0 +1,192 @@
+diff --git a/web/static/css/style.css b/web/static/css/style.css
+index c2ce934..9c91e38 100644
+--- a/web/static/css/style.css
++++ b/web/static/css/style.css
+@@ -608,6 +608,114 @@ h1 {
+     font-weight: 500;
+ }
+ 
++.analytics-strip {
++    grid-template-columns:
++        minmax(220px, 1.5fr)
++        repeat(7, minmax(94px, 0.72fr))
++        minmax(170px, 1.1fr);
++    gap: 9px;
++    padding: 8px;
++    background: rgb(8 15 29 / 45%);
++    border: 1px solid #26354b;
++    border-radius: 16px;
++}
++
++.analytics-strip .card {
++    display: flex;
++    min-height: 98px;
++    flex-direction: column;
++    justify-content: center;
++    padding: 13px 14px;
++    border-radius: 10px;
++}
++
++.analytics-strip .label {
++    margin-bottom: 6px;
++    color: #7f91aa;
++    font-size: 11px;
++    font-weight: 700;
++    letter-spacing: 0.025em;
++}
++
++.analytics-strip .value {
++    font-size: clamp(19px, 1.65vw, 25px);
++    line-height: 1.05;
++    white-space: nowrap;
++}
++
++.analytics-strip .price-card {
++    min-height: 98px;
++    padding-left: 18px;
++}
++
++.analytics-strip .price-card-symbol {
++    margin-bottom: 7px;
++    font-size: 11px;
++}
++
++.analytics-strip .price-card-symbol small {
++    display: inline;
++    margin-left: 4px;
++    color: #7dd3fc;
++}
++
++.analytics-strip .price-card-value {
++    font-size: clamp(24px, 2vw, 31px);
++}
++
++.analytics-strip .price-card-quote {
++    font-size: 10px;
++}
++
++.analytics-strip .score-breakdown {
++    margin-top: 6px;
++    font-size: 9px;
++    line-height: 1.25;
++}
++
++.analytics-strip .market-regime-card {
++    background:
++        linear-gradient(145deg, rgb(30 41 59 / 95%), rgb(15 23 42 / 92%));
++}
++
++.analytics-strip .market-regime-card .value {
++    font-size: 16px;
++    line-height: 1.2;
++    white-space: normal;
++}
++
++.analytics-strip .grade-card .value {
++    font-size: 24px;
++}
++
++@media (max-width: 1180px) {
++    .analytics-strip {
++        grid-template-columns: repeat(4, minmax(0, 1fr));
++    }
++
++    .analytics-strip .price-card,
++    .analytics-strip .market-regime-card {
++        grid-column: span 2;
++    }
++}
++
++@media (max-width: 700px) {
++    .analytics-strip {
++        grid-template-columns: repeat(2, minmax(0, 1fr));
++        padding: 6px;
++    }
++
++    .analytics-strip .card {
++        min-height: 82px;
++        padding: 11px 12px;
++    }
++
++    .analytics-strip .price-card,
++    .analytics-strip .market-regime-card {
++        grid-column: span 2;
++    }
++}
++
+ .workspace {
+     --strategy-width: 285px;
+     display: grid;
+diff --git a/web/templates/index.html b/web/templates/index.html
+index 2598a36..ad2f1ee 100644
+--- a/web/templates/index.html
++++ b/web/templates/index.html
+@@ -158,7 +158,7 @@
+             {% set is_skip = "SKIP" in decision_upper or grade_upper in ["SKIP", "C"] %}
+             {% set is_wait = not is_skip and ("WAIT" in decision_upper or grade_upper in ["WAIT", "B"]) %}
+             <section>
+-                <div class="cards">
++                <div class="cards analytics-strip">
+                     <div class="card price-card">
+                         <div class="price-card-symbol">
+                             <span class="price-card-icon">{{ asset_info["icon"] }}</span>
+@@ -223,12 +223,12 @@
+                         <div class="value">{{ result["sentiment_score"] }}/{{ result.get("sentiment_max", 30) }}</div>
+                     </div>
+ 
+-                    <div class="card">
++                    <div class="card metric-card grade-card">
+                         <div class="label">{{ result.get("rsi_label", "RSI 4H") }}</div>
+                         <div class="value">{{ result["rsi_4h"] }}</div>
+                     </div>
+ 
+-                    <div class="card">
++                    <div class="card metric-card">
+                         <div class="label">Режим рынка</div>
+                         <div class="value market-mode market-mode-{{ result.get('market_mode', 'RANGE')|lower }}">
+                             {{ result.get("market_mode_label", result.get("market_mode", "—")) }}
+@@ -756,7 +756,7 @@
+                 <h2 class="section-title">Объяснение стратегии</h2>
+ 
+                 <div class="analysis-grid">
+-                    <div class="card">
++                    <div class="card metric-card">
+                         <div class="label">✅ Причины</div>
+                         <ul>
+                             {% for reason in result["reasons"] %}
+@@ -765,7 +765,7 @@
+                         </ul>
+                     </div>
+ 
+-                    <div class="card">
++                    <div class="card metric-card">
+                         <div class="label">⚠️ Предупреждения</div>
+                         <ul>
+                             {% for warning in result["warnings"] %}
+@@ -906,22 +906,22 @@
+                 </div>
+ 
+                 <div class="history-stats">
+-                    <div class="card">
++                    <div class="card metric-card indicators-card">
+                         <div class="label">Всего анализов</div>
+                         <div class="value">{{ stats["total"] }}</div>
+                     </div>
+ 
+-                    <div class="card">
++                    <div class="card metric-card">
+                         <div class="label">Средний Score</div>
+                         <div class="value">{{ stats["average_score"] }}</div>
+                     </div>
+ 
+-                    <div class="card">
++                    <div class="card metric-card">
+                         <div class="label">BUY</div>
+                         <div class="value status-buy">{{ stats["buy_count"] }}</div>
+                     </div>
+ 
+-                    <div class="card">
++                    <div class="card metric-card market-regime-card">
+                         <div class="label">WAIT</div>
+                         <div class="value status-wait">{{ stats["wait_count"] }}</div>
+                     </div>

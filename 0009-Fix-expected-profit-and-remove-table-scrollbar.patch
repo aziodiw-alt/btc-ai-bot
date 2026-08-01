@@ -1,0 +1,337 @@
+diff --git a/test_pending_order_profit.py b/test_pending_order_profit.py
+new file mode 100644
+index 0000000..4da95ca
+--- /dev/null
++++ b/test_pending_order_profit.py
+@@ -0,0 +1,82 @@
++import unittest
++from unittest.mock import patch
++
++from web.dashboard_trades import get_pending_orders
++
++
++class _Rows:
++    def __init__(self, rows):
++        self.rows = rows
++
++    def fetchall(self):
++        return self.rows
++
++
++class _Connection:
++    def __init__(self, rows):
++        self.rows = rows
++
++    def __enter__(self):
++        return self
++
++    def __exit__(self, *_args):
++        return False
++
++    def execute(self, *_args):
++        return _Rows(self.rows)
++
++
++class PendingOrderProfitTests(unittest.TestCase):
++    def test_sell_orders_share_available_fifo_quantity(self):
++        rows = [
++            {
++                "id": 1,
++                "side": "SELL",
++                "order_price": 11000,
++                "order_quantity": 0.01,
++                "order_value": 110,
++            },
++            {
++                "id": 2,
++                "side": "SELL",
++                "order_price": 11000,
++                "order_quantity": 0.01,
++                "order_value": 110,
++            },
++        ]
++        fifo = {
++            "open_quantity": 0.015,
++            "open_cost": 150,
++        }
++
++        with (
++            patch(
++                "web.dashboard_trades._connect",
++                return_value=_Connection(rows),
++            ),
++            patch(
++                "web.dashboard_trades._resolve_user_id",
++                return_value=1,
++            ),
++            patch(
++                "web.dashboard_trades._get_bybit_fifo_statistics",
++                return_value=fifo,
++            ),
++        ):
++            orders = get_pending_orders(symbol="BTCUSDT")
++
++        self.assertAlmostEqual(orders[0]["matched_quantity"], 0.01)
++        self.assertAlmostEqual(orders[1]["matched_quantity"], 0.005)
++        self.assertTrue(orders[0]["profit_is_complete"])
++        self.assertFalse(orders[1]["profit_is_complete"])
++        self.assertAlmostEqual(orders[1]["profit_coverage_pct"], 50)
++        # FIFO cost already includes the entry fee, so only the future
++        # sell fee is deducted: 110 - 100 - 0.11.
++        self.assertAlmostEqual(
++            orders[0]["estimated_profit_usdt"],
++            9.89,
++        )
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/web/app.py b/web/app.py
+index f3f3d7d..51b6a13 100644
+--- a/web/app.py
++++ b/web/app.py
+@@ -359,6 +359,20 @@ def home():
+             for order in open_orders
+             if order["estimated_cost_usdt"] is not None
+         )
++        sell_quantity = sum(
++            float(order["order_quantity"])
++            for order in open_orders
++            if order["side"] == "SELL"
++        )
++        matched_sell_quantity = sum(
++            float(order["matched_quantity"])
++            for order in open_orders
++            if order["side"] == "SELL"
++        )
++        unmatched_sell_quantity = max(
++            sell_quantity - matched_sell_quantity,
++            0,
++        )
+         open_order_summary = {
+             "count": len(open_orders),
+             "buy_count": sum(
+@@ -383,6 +397,17 @@ def home():
+                 if expected_cost > 0
+                 else None
+             ),
++            "profit_coverage_pct": (
++                matched_sell_quantity / sell_quantity * 100
++                if sell_quantity > 0
++                else None
++            ),
++            "profit_is_complete": (
++                sell_quantity > 0
++                and unmatched_sell_quantity <= 1e-12
++            ),
++            "matched_sell_quantity": matched_sell_quantity,
++            "unmatched_sell_quantity": unmatched_sell_quantity,
+             "calculated_sell_count": sum(
+                 order["estimated_profit_usdt"] is not None
+                 for order in open_orders
+@@ -401,6 +426,10 @@ def home():
+             "sell_value": 0,
+             "expected_profit": 0,
+             "expected_profit_pct": None,
++            "profit_coverage_pct": None,
++            "profit_is_complete": False,
++            "matched_sell_quantity": 0,
++            "unmatched_sell_quantity": 0,
+             "calculated_sell_count": 0,
+         }
+ 
+diff --git a/web/dashboard_trades.py b/web/dashboard_trades.py
+index 12820bb..0898677 100644
+--- a/web/dashboard_trades.py
++++ b/web/dashboard_trades.py
+@@ -1088,6 +1088,7 @@ def get_pending_orders(
+     )
+ 
+     items = []
++    remaining_open_quantity = open_quantity
+ 
+     for row in rows:
+         order = dict(row)
+@@ -1100,6 +1101,15 @@ def get_pending_orders(
+         order["estimated_profit_pct"] = None
+         order["estimated_cost_usdt"] = None
+         order["matched_quantity"] = 0.0
++        order["unmatched_quantity"] = 0.0
++        order["profit_coverage_pct"] = None
++        order["profit_is_complete"] = False
++        order["average_buy_price"] = (
++            average_buy_price if side == "SELL" else None
++        )
++        if side == "SELL":
++            order["unmatched_quantity"] = order_quantity
++            order["profit_coverage_pct"] = 0.0
+ 
+         if market_price and market_price > 0:
+             if side == "BUY":
+@@ -1119,21 +1129,39 @@ def get_pending_orders(
+             side == "SELL"
+             and average_buy_price is not None
+             and order_quantity > 0
++            and remaining_open_quantity > 1e-12
+         ):
+-            matched_quantity = min(order_quantity, open_quantity)
++            matched_quantity = min(
++                order_quantity,
++                remaining_open_quantity,
++            )
++            remaining_open_quantity = max(
++                remaining_open_quantity - matched_quantity,
++                0,
++            )
+             entry_value = matched_quantity * average_buy_price
+             exit_value = matched_quantity * order_price
+-            estimated_fees = (
+-                entry_value * DEFAULT_FEE_RATE
+-                + exit_value * DEFAULT_FEE_RATE
+-            )
++            # average_buy_price is derived from FIFO unit_cost, which
++            # already includes the entry fee. Only the future sell fee
++            # must be subtracted here.
++            estimated_sell_fee = exit_value * DEFAULT_FEE_RATE
+             estimated_profit = (
+                 exit_value
+                 - entry_value
+-                - estimated_fees
++                - estimated_sell_fee
+             )
+ 
+             order["matched_quantity"] = matched_quantity
++            order["unmatched_quantity"] = max(
++                order_quantity - matched_quantity,
++                0,
++            )
++            order["profit_coverage_pct"] = (
++                matched_quantity / order_quantity * 100
++            )
++            order["profit_is_complete"] = (
++                order["unmatched_quantity"] <= 1e-12
++            )
+             order["estimated_cost_usdt"] = entry_value
+             order["estimated_profit_usdt"] = estimated_profit
+             order["estimated_profit_pct"] = (
+diff --git a/web/static/css/style.css b/web/static/css/style.css
+index d26678d..88f4653 100644
+--- a/web/static/css/style.css
++++ b/web/static/css/style.css
+@@ -1230,7 +1230,7 @@ body.is-resizing-workspace {
+ }
+ 
+ .history-table-scroll {
+-    overflow-x: auto;
++    overflow-x: hidden;
+ }
+ 
+ .history-table {
+@@ -1272,37 +1272,20 @@ body.is-resizing-workspace {
+ 
+ .open-orders-table {
+     width: 100%;
+-    min-width: 1390px;
+-    table-layout: fixed;
++    min-width: 0;
++    table-layout: auto;
+ }
+ 
+-.open-orders-table th {
+-    position: relative;
+-    overflow: hidden;
+-    text-overflow: ellipsis;
++.open-orders-table th,
++.open-orders-table td {
++    padding: 10px 8px;
++    font-size: 11px;
++    white-space: normal;
++    overflow-wrap: anywhere;
+ }
+ 
+-.open-orders-table th:nth-child(1) { width: 145px; }
+-.open-orders-table th:nth-child(2) { width: 85px; }
+-.open-orders-table th:nth-child(3) { width: 125px; }
+-.open-orders-table th:nth-child(4) { width: 100px; }
+-.open-orders-table th:nth-child(5) { width: 140px; }
+-.open-orders-table th:nth-child(6) { width: 115px; }
+-.open-orders-table th:nth-child(7) { width: 130px; }
+-.open-orders-table th:nth-child(8) { width: 195px; }
+-.open-orders-table th:nth-child(9) { width: 110px; }
+-.open-orders-table th:nth-child(10) { width: 205px; }
+-
+ .column-resizer {
+-    position: absolute;
+-    top: 0;
+-    right: -3px;
+-    bottom: 0;
+-    width: 8px;
+-    cursor: col-resize;
+-    touch-action: none;
+-    user-select: none;
+-    z-index: 2;
++    display: none;
+ }
+ 
+ .column-resizer::after {
+diff --git a/web/templates/index.html b/web/templates/index.html
+index 7aae3e4..bcae0ae 100644
+--- a/web/templates/index.html
++++ b/web/templates/index.html
+@@ -509,14 +509,21 @@
+                         </strong>
+                     </div>
+                     <div class="open-order-summary-card">
+-                        <span>Ожидаемая чистая прибыль</span>
++                        <span>
++                            {% if open_order_summary["profit_is_complete"] %}
++                                Ожидаемая чистая прибыль
++                            {% else %}
++                                Частичный расчёт прибыли
++                            {% endif %}
++                        </span>
+                         {% if open_order_summary["expected_profit_pct"] is not none %}
+                             <strong class="{{ 'status-buy' if open_order_summary['expected_profit'] >= 0 else 'status-skip' }}">
+                                 {{ "{:+.2f}".format(open_order_summary["expected_profit"]) }} USDT
+                             </strong>
+                             <small>
+                                 {{ "{:+.2f}".format(open_order_summary["expected_profit_pct"]) }}%
+-                                · рассчитано SELL: {{ open_order_summary["calculated_sell_count"] }}
++                                · покрыто покупками:
++                                {{ "%.1f"|format(open_order_summary["profit_coverage_pct"]) }}%
+                             </small>
+                         {% else %}
+                             <strong>—</strong>
+@@ -525,9 +532,6 @@
+                     </div>
+                 </div>
+ 
+-                <p class="table-resize-hint">
+-                    ↔ Ширину колонок можно менять, потянув границу заголовка. Двойной щелчок сбрасывает размеры.
+-                </p>
+                 <div class="history-table-scroll">
+                     <table
+                         id="open-orders-table"
+@@ -586,9 +590,22 @@
+                                     <td>
+                                         {% if order["estimated_profit_usdt"] is not none %}
+                                             <span class="{{ 'status-buy' if order['estimated_profit_usdt'] >= 0 else 'status-skip' }}">
++                                                {% if not order["profit_is_complete"] %}
++                                                    Частично:
++                                                {% endif %}
+                                                 {{ "{:+.2f}".format(order["estimated_profit_usdt"]) }} USDT
+                                                 ({{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%)
+                                             </span>
++                                            {% if not order["profit_is_complete"] %}
++                                                <small class="table-muted">
++                                                    Покрыто исполненными покупками:
++                                                    {{ "%.1f"|format(order["profit_coverage_pct"]) }}%
++                                                </small>
++                                            {% endif %}
++                                            <small class="table-muted">
++                                                Средняя покупка:
++                                                {{ "{:,.0f}".format(order["average_buy_price"]).replace(",", " ") }}
++                                            </small>
+                                         {% elif order["side"] == "BUY" %}
+                                             <span class="table-muted">После исполнения</span>
+                                         {% else %}

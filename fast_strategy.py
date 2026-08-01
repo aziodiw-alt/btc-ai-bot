@@ -2,14 +2,16 @@ from indicators import analyze
 from market import get_klines, get_ticker
 from sentiment import get_sentiment
 from levels import calculate_support_resistance, calculate_trade_levels
+from market_state import detect_market_state
 
 
-def analyze_fast_strategy(symbol="BTCUSDT"):
-    price = float(get_ticker(symbol)["price"])
-    frame_4h = get_klines("240", 250, symbol)
-    frame_1h = get_klines("60", 250, symbol)
+def analyze_fast_strategy(symbol="BTCUSDT", exchange="bybit"):
+    price = float(get_ticker(symbol, exchange=exchange)["price"])
+    frame_4h = get_klines("240", 250, symbol, exchange=exchange)
+    frame_1h = get_klines("60", 250, symbol, exchange=exchange)
     ind_4h = analyze(frame_4h)
     ind_1h = analyze(frame_1h)
+    market_state = detect_market_state(price, ind_4h, ind_1h)
     support, resistance = calculate_support_resistance(frame_1h, lookback=80)
 
     trend_score = 0
@@ -128,9 +130,9 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         + sentiment_score
     )
 
-    if trend_score < 20:
+    if market_state["key"] == "DOWNTREND":
         grade = "SKIP"
-        decision = "FAST SKIP — направление 4H слишком слабое"
+        decision = "FAST SKIP — нисходящий режим рынка"
     elif total_score >= 85:
         grade = "A+"
         decision = "FAST BUY LIMIT — сильный короткий сигнал"
@@ -148,6 +150,7 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
         price,
         support,
         resistance,
+        atr=ind_1h["atr"],
         profile="fast",
     )
     available_profit_pct = trade_levels["available_profit_pct"]
@@ -159,13 +162,22 @@ def analyze_fast_strategy(symbol="BTCUSDT"):
 
     return {
         "symbol": symbol,
-        "display_symbol": symbol.replace("USDT", "/USDT"),
+        "exchange": exchange,
+        "display_symbol": (
+            symbol.replace("USDT", "/USD (USDC)")
+            if exchange == "okx"
+            else symbol.replace("USDT", "/USDT")
+        ),
         "asset": symbol.replace("USDT", ""),
         "strategy_key": "fast",
         "strategy_name": "Fast",
         "strategy_description": "Частые небольшие сделки · 4H + 1H",
+        "market_mode": market_state["key"],
+        "market_mode_label": market_state["label"],
+        "market_mode_description": market_state["description"],
         "price": round(price, 2),
         "support": round(support, 2),
+        "support_zone": trade_levels["support_zone"],
         "resistance": round(resistance, 2),
         "distance_to_resistance_pct": round(distance_to_resistance, 2),
         "trend_score": trend_score,
