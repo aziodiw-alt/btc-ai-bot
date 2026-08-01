@@ -223,6 +223,19 @@ def get_strategy_comparison(symbol="BTC/USDT"):
         },
     }
 
+    strategies["alpha"] = {
+        "key": "alpha",
+        "name": "Alpha",
+        "total": 0,
+        "average_score": 0.0,
+        "buy_count": 0,
+        "wait_count": 0,
+        "skip_count": 0,
+        "latest_grade": "-",
+        "latest_score": 0,
+        "latest_created_at": "-",
+    }
+
     with _connect() as connection:
         rows = connection.execute(
             """
@@ -234,7 +247,7 @@ def get_strategy_comparison(symbol="BTC/USDT"):
                 SUM(CASE WHEN signal_type = 'WAIT' THEN 1 ELSE 0 END) AS wait_count,
                 SUM(CASE WHEN signal_type = 'SKIP' THEN 1 ELSE 0 END) AS skip_count
             FROM analysis_history
-            WHERE strategy_name IN ('swing', 'fast')
+            WHERE strategy_name IN ('swing', 'fast', 'alpha')
               AND symbol = ?
             GROUP BY strategy_name
             """,
@@ -252,7 +265,7 @@ def get_strategy_comparison(symbol="BTC/USDT"):
             INNER JOIN (
                 SELECT strategy_name, MAX(created_at_unix) AS latest_unix
                 FROM analysis_history
-                WHERE strategy_name IN ('swing', 'fast')
+                WHERE strategy_name IN ('swing', 'fast', 'alpha')
                   AND symbol = ?
                 GROUP BY strategy_name
             ) AS latest
@@ -286,4 +299,4 @@ def get_strategy_comparison(symbol="BTC/USDT"):
             "latest_created_at": str(row["created_at"]),
         })
 
-    return [strategies["swing"], strategies["fast"]]
+    return [strategies["swing"], strategies["fast"], strategies["alpha"]]

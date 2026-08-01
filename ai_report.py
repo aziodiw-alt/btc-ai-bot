@@ -85,7 +85,6 @@ Whale Alert и новостные заголовки являются допол
 Пара: {display_symbol}
 Стратегия: {result.get("strategy_name", "Swing")}
 Цена: {result["price"]}
-Market mode: {result.get("market_mode_label", result.get("market_mode", "not classified"))}
 Trend: {result["trend_score"]}/{result.get("trend_max", 40)}
 Entry: {result["entry_score"]}/{result.get("entry_max", 20)}
 Indicators: {result["indicators_score"]}/{result.get("indicators_max", 10)}

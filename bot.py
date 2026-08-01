@@ -18,6 +18,7 @@ from telegram.ext import (
     filters,
 )
 
+from ai_report import generate_report
 from database import (
     clear_bybit_executions,
     close_trade,
@@ -31,8 +32,8 @@ from database import (
     toggle_signal_subscription,
 )
 from market import get_ticker
-from okx_client import OkxReadOnlyClient
 from strategy import analyze_strategy
+from alpha_strategy import analyze_alpha_strategy
 from trade_import import import_bybit_csv
 from web.dashboard_trades import get_pending_orders, get_trades
 
@@ -44,7 +45,6 @@ DASHBOARD_URL = os.getenv("DASHBOARD_URL", "").strip()
 keyboard = ReplyKeyboardMarkup(
     [
         ["📊 Анализ BTC", "📊 Анализ ETH"],
-        ["🏦 Bybit", "🏦 OKX"],
         ["📋 Открытые ордера", "📈 Статистика"],
         ["🌐 Открыть Dashboard"],
         ["🔔 Автосигналы ВКЛ/ВЫКЛ"],
@@ -67,21 +67,14 @@ def format_zone(zone):
 
 def format_analysis(result):
     display_symbol = result.get("display_symbol", "BTC/USDT")
-    exchange_name = (
-        "OKX"
-        if str(result.get("exchange", "bybit")).lower() == "okx"
-        else "Bybit"
-    )
     price_decimals = 2 if display_symbol.startswith("ETH") else 0
     reasons = "\n".join(f"• {item}" for item in result.get("reasons", []))
     warnings = "\n".join(f"• {item}" for item in result.get("warnings", []))
 
     return f"""📊 {display_symbol}
-🏦 Биржа: {exchange_name}
 
 💰 Цена: {format_number(result["price"], price_decimals)}
 
-🧭 Режим: {result.get("market_mode_label", result.get("market_mode", "—"))}
 📈 Trend: {result["trend_score"]}/40
 🎯 Entry: {result["entry_score"]}/20
 📊 Indicators: {result["indicators_score"]}/10
@@ -90,7 +83,7 @@ def format_analysis(result):
 🏆 Итог: {result["total_score"]}/100
 ⭐ Grade: {result["grade"]}
 
-📌 Решение стратегии:
+🤖 Решение:
 {result["decision"]}
 
 🎯 Buy Zone 1: {format_zone(result["buy_zone_1"])}
@@ -106,64 +99,72 @@ def format_analysis(result):
 {warnings or "• Нет"}"""
 
 
+def format_alpha_analysis(result):
+    entries = "\n".join(
+        f'{item["label"]}: {item["allocation_pct"]}% @ '
+        f'{format_number(item["price"], 2)}'
+        for item in result["entry_plan"]
+    )
+    trailing = result["trailing_stop"]
+    return f"""ALPHA {result["display_symbol"]}
+
+Current price: {format_number(result["current_price"], 2)}
+Planned average entry: {format_number(result["planned_entry"], 2)}
+Decision: {result["decision"]}
+Score: {result["total_score"]}/100 ({result["grade"]})
+
+Staggered entries:
+{entries}
+
+Stop Loss: {format_number(result["stop_loss"], 2)}
+TP1: {format_number(result["take_profit_1"], 2)}
+TP2: {format_number(result["take_profit_2"], 2)}
+
+Profit protection activates only after TP1:
+protected stop {format_number(trailing["protected_stop"], 2)}
+trailing distance {trailing["trail_distance_pct"]}%"""
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.pop("awaiting_buy_amount", None)
     context.user_data.pop("awaiting_clear_csv_confirmation", None)
     await update.message.reply_text(
-        "Привет! Выбери действие:\n\n"
-        "Текущая биржа: Bybit",
+        "Привет! Выбери действие:",
         reply_markup=keyboard,
     )
 
 
-def get_selected_exchange(context):
-    return (
-        "okx"
-        if context.user_data.get("exchange") == "okx"
-        else "bybit"
-    )
-
-
-async def select_exchange(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    exchange: str,
-):
-    exchange = "okx" if exchange == "okx" else "bybit"
-    context.user_data["exchange"] = exchange
-    exchange_name = "OKX" if exchange == "okx" else "Bybit"
-    pair = "BTC-USDC / ETH-USDC" if exchange == "okx" else "BTC-USDT / ETH-USDT"
+async def analyze_asset(update, symbol):
+    display_symbol = symbol.replace("USDT", "/USDT")
     await update.message.reply_text(
-        f"✅ Выбрана биржа {exchange_name}\n"
-        f"Торговые пары: {pair}",
-        reply_markup=keyboard,
+        f"Получаю данные {display_symbol} с Bybit и считаю индикаторы... ⏳"
     )
-
-
-async def analyze_asset(update, symbol, exchange="bybit"):
-    display_symbol = (
-        symbol.replace("USDT", "/USD (USDC)")
-        if exchange == "okx"
-        else symbol.replace("USDT", "/USDT")
-    )
-    exchange_name = "OKX" if exchange == "okx" else "Bybit"
-    await update.message.reply_text(
-        f"Получаю данные {display_symbol} с {exchange_name} "
-        "и считаю индикаторы... ⏳"
-    )
-    result = await asyncio.to_thread(
-        analyze_strategy,
-        symbol,
-        exchange,
-    )
+    result = await asyncio.to_thread(analyze_strategy, symbol)
     await update.message.reply_text(format_analysis(result), reply_markup=keyboard)
 
+    await update.message.reply_text("Готовлю AI-комментарий... 🤖")
+    ai_text = await asyncio.to_thread(generate_report, result)
+    await update.message.reply_text(
+        f"🤖 AI-комментарий:\n\n{ai_text}",
+        reply_markup=keyboard,
+    )
 
-async def show_dashboard_orders(update: Update, exchange="bybit"):
-    if exchange == "okx":
-        await show_okx_orders(update)
-        return
 
+async def analyze_alpha(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    symbol = "ETHUSDT" if context.args and context.args[0].lower() == "eth" else "BTCUSDT"
+    result = await asyncio.to_thread(analyze_alpha_strategy, symbol)
+    await update.message.reply_text(
+        format_alpha_analysis(result),
+        reply_markup=keyboard,
+    )
+    ai_text = await asyncio.to_thread(generate_report, result)
+    await update.message.reply_text(
+        f"Alpha AI:\n\n{ai_text}",
+        reply_markup=keyboard,
+    )
+
+
+async def show_dashboard_orders(update: Update):
     blocks = []
 
     for symbol in ("BTCUSDT", "ETHUSDT"):
@@ -186,9 +187,7 @@ async def show_dashboard_orders(update: Update, exchange="bybit"):
 
         display_symbol = symbol.replace("USDT", "/USDT")
         price_decimals = 2 if symbol == "ETHUSDT" else 0
-        lines = [
-            f"📋 BYBIT · {display_symbol} — {len(orders)}"
-        ]
+        lines = [f"📋 {display_symbol} — {len(orders)}"]
 
         for order in orders:
             side = str(order.get("side", "")).upper()
@@ -234,62 +233,14 @@ async def show_dashboard_orders(update: Update, exchange="bybit"):
         blocks.append("\n\n".join(lines))
 
     if not blocks:
-        text = (
-            "📋 Bybit: открытых ордеров BTC/USDT "
-            "и ETH/USDT сейчас нет."
-        )
+        text = "📋 Открытых ордеров BTC/USDT и ETH/USDT сейчас нет."
     else:
         text = "\n\n────────────\n\n".join(blocks)
 
     await update.message.reply_text(text, reply_markup=keyboard)
 
 
-async def show_okx_orders(update: Update):
-    orders = await asyncio.to_thread(
-        OkxReadOnlyClient().get_open_orders
-    )
-    orders = [
-        order
-        for order in orders
-        if order.get("instrument") in {
-            "BTC-USDC",
-            "ETH-USDC",
-        }
-    ]
-
-    if not orders:
-        await update.message.reply_text(
-            "📋 На OKX сейчас нет открытых Spot-ордеров "
-            "BTC-USDC или ETH-USDC.",
-            reply_markup=keyboard,
-        )
-        return
-
-    blocks = []
-    for order in orders:
-        side = str(order.get("side") or "").upper()
-        side_icon = "🟢" if side == "BUY" else "🔴"
-        blocks.append(
-            f"""{side_icon} {side} · {order["instrument"]}
-Цена: {format_number(order["price"], 2)}
-Осталось: {float(order["remaining_size"]):.8f}
-Сумма: {format_number(order["remaining_value"], 2)} {order["quote_currency"]}
-Статус: {order["state"]}
-Order ID: {order["order_id"] or "—"}"""
-        )
-
-    await update.message.reply_text(
-        "📋 Открытые ордера OKX\n\n"
-        + "\n\n────────────\n\n".join(blocks),
-        reply_markup=keyboard,
-    )
-
-
-async def show_dashboard_statistics(update: Update, exchange="bybit"):
-    if exchange == "okx":
-        await show_okx_statistics(update)
-        return
-
+async def show_dashboard_statistics(update: Update):
     blocks = []
     portfolio_profit = 0.0
     portfolio_closed = 0
@@ -329,40 +280,6 @@ Win Rate: {float(stats["win_rate"]):.1f}%"""
         f"\nЗакрытых циклов всего: {portfolio_closed}"
     )
     await update.message.reply_text(text, reply_markup=keyboard)
-
-
-async def show_okx_statistics(update: Update):
-    client = OkxReadOnlyClient()
-    account, orders, trades = await asyncio.gather(
-        asyncio.to_thread(client.connection_status),
-        asyncio.to_thread(client.get_open_orders),
-        asyncio.to_thread(client.get_trade_history),
-    )
-    balances = {
-        item["currency"]: item
-        for item in account.get("currencies", [])
-    }
-    btc = balances.get("BTC", {})
-    usdc = balances.get("USDC", {})
-    btc_trades = [
-        trade
-        for trade in trades
-        if trade.get("instrument") == "BTC-USDC"
-    ]
-
-    await update.message.reply_text(
-        f"""📈 Статистика OKX
-
-Общий баланс: ≈ {format_number(account.get("total_usd", 0), 2)} USD
-BTC: {float(btc.get("total", 0)):.8f}
-USDC: {float(usdc.get("total", 0)):.2f}
-
-Открытых Spot-ордеров: {len(orders)}
-Исполнений BTC-USDC в истории: {len(btc_trades)}
-Покупок: {sum(trade["side"] == "BUY" for trade in btc_trades)}
-Продаж: {sum(trade["side"] == "SELL" for trade in btc_trades)}""",
-        reply_markup=keyboard,
-    )
 
 
 async def show_dashboard_link(update: Update):
@@ -688,7 +605,6 @@ def format_auto_signal(result):
 ⭐ Качество: {result["grade"]}
 🏆 Оценка: {result["total_score"]}/100
 💰 Текущая цена: {format_number(result["price"], price_decimals)}
-🧭 Режим рынка: {result.get("market_mode_label", result.get("market_mode", "—"))}
 
 🤖 Решение стратегии:
 {result["decision"]}
@@ -791,21 +707,16 @@ async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
     normalized = text.lower()
-    exchange = get_selected_exchange(context)
 
     try:
         if "анализ btc" in normalized:
-            await analyze_asset(update, "BTCUSDT", exchange)
+            await analyze_asset(update, "BTCUSDT")
         elif "анализ eth" in normalized:
-            await analyze_asset(update, "ETHUSDT", exchange)
-        elif normalized == "🏦 bybit" or normalized == "bybit":
-            await select_exchange(update, context, "bybit")
-        elif normalized == "🏦 okx" or normalized == "okx":
-            await select_exchange(update, context, "okx")
+            await analyze_asset(update, "ETHUSDT")
         elif "открытые ордера" in normalized:
-            await show_dashboard_orders(update, exchange)
+            await show_dashboard_orders(update)
         elif "статистика" in normalized:
-            await show_dashboard_statistics(update, exchange)
+            await show_dashboard_statistics(update)
         elif "открыть dashboard" in normalized:
             await show_dashboard_link(update)
         elif "автосигналы" in normalized:
@@ -831,6 +742,7 @@ def main():
 
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("alpha", analyze_alpha))
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text)
     )

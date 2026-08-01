@@ -16,7 +16,6 @@
     }
 
     const activeSymbol = chartElement.dataset.symbol || "BTCUSDT";
-    const activeExchange = chartElement.dataset.exchange || "bybit";
     const priceDigits = activeSymbol === "BTCUSDT" ? 1 : 2;
 
     function showLoading(message = "Загружаем свечи и уровни…") {
@@ -199,12 +198,9 @@
             LightweightCharts.LineStyle.Dashed
         ));
 
-        createZone(
-            levels.support_zone || levels.support,
-            "zone-support",
-            "Поддержка / Buy Zone 1"
-        );
+        createZone(levels.support, "zone-support", "Поддержка");
         createZone(levels.resistance, "zone-resistance", "Сопротивление");
+        createZone(levels.buy_zone_1, "zone-buy", "Buy Zone 1");
         createZone(levels.buy_zone_2, "zone-buy", "Buy Zone 2");
 
         levelsInitialized = true;
@@ -243,52 +239,6 @@
             "stop-loss": formatLevel(levels.stop_loss),
             "take-profit-1": formatLevel(levels.take_profit_1),
             "take-profit-2": formatLevel(levels.take_profit_2)
-        };
-
-        Object.entries(values).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = value;
-            }
-        });
-
-        const averages = {
-            "buy-zone-1-average": (
-                Number(levels.buy_zone_1[0])
-                + Number(levels.buy_zone_1[1])
-            ) / 2,
-            "buy-zone-2-average": (
-                Number(levels.buy_zone_2[0])
-                + Number(levels.buy_zone_2[1])
-            ) / 2
-        };
-
-        Object.entries(averages).forEach(([id, value]) => {
-            const element = document.getElementById(id);
-            if (element) {
-                element.textContent = formatLevel(value);
-            }
-        });
-    }
-
-    function updateLegend(levels) {
-        const values = {
-            "legend-support": (
-                `Поддержка / Buy Zone 1: ${formatLevel(levels.buy_zone_1[0])}`
-                + ` – ${formatLevel(levels.buy_zone_1[1])}`
-            ),
-            "legend-resistance": (
-                `Сопротивление: ${formatLevel(levels.resistance)}`
-            ),
-            "legend-buy-zone-2": (
-                `Buy Zone 2: ${formatLevel(levels.buy_zone_2[0])}`
-                + ` – ${formatLevel(levels.buy_zone_2[1])}`
-            ),
-            "legend-targets": (
-                `SL ${formatLevel(levels.stop_loss)}`
-                + ` · TP1 ${formatLevel(levels.take_profit_1)}`
-                + ` · TP2 ${formatLevel(levels.take_profit_2)}`
-            )
         };
 
         Object.entries(values).forEach(([id, value]) => {
@@ -389,7 +339,6 @@
             );
             apiUrl.searchParams.set("timeframe", timeframe);
             apiUrl.searchParams.set("symbol", activeSymbol);
-            apiUrl.searchParams.set("exchange", activeExchange);
             apiUrl.searchParams.set(
                 "strategy",
                 chartElement.dataset.strategy || "swing"
@@ -410,16 +359,13 @@
             }
 
             if (!payload.candles || payload.candles.length === 0) {
-                throw new Error(
-                    `${activeExchange.toUpperCase()} не вернул свечи`
-                );
+                throw new Error("Bybit не вернул свечи");
             }
 
             candles.setData(payload.candles);
             initializeLevels(payload.levels);
             updateCurrentPrice(payload);
             updateLevelCards(payload.levels);
-            updateLegend(payload.levels);
             setActiveTimeframe(
                 payload.timeframe || timeframe,
                 payload.timeframe_label || label
@@ -948,110 +894,4 @@
     }
 
     initializeResizableOrderColumns();
-})();
-
-(function initializeBalanceVisibility() {
-    const toggle = document.getElementById("hide-small-balances");
-    const balances = Array.from(
-        document.querySelectorAll(".exchange-balance[data-usd-value]")
-    );
-
-    if (!toggle || balances.length === 0) {
-        return;
-    }
-
-    const storageKey = "okx-hide-small-balances";
-
-    function applyBalanceFilter() {
-        balances.forEach((balance) => {
-            const usdValue = Number(balance.dataset.usdValue || 0);
-            balance.hidden = toggle.checked && usdValue < 1;
-        });
-        localStorage.setItem(storageKey, toggle.checked ? "1" : "0");
-    }
-
-    toggle.checked = localStorage.getItem(storageKey) === "1";
-    toggle.addEventListener("change", applyBalanceFilter);
-    applyBalanceFilter();
-})();
-
-(function initializeLevelCopyButtons() {
-    const buttons = Array.from(
-        document.querySelectorAll(".copy-level-button[data-copy-target]")
-    );
-
-    buttons.forEach((button) => {
-        button.addEventListener("click", async () => {
-            const target = document.getElementById(button.dataset.copyTarget);
-            if (!target) {
-                return;
-            }
-
-            const value = target.textContent
-                .replace(/\s+/g, "")
-                .replace(",", ".")
-                .trim();
-
-            try {
-                await navigator.clipboard.writeText(value);
-                const originalText = button.textContent;
-                button.textContent = "Скопировано";
-                button.classList.add("is-copied");
-                window.setTimeout(() => {
-                    button.textContent = originalText;
-                    button.classList.remove("is-copied");
-                }, 1400);
-            } catch (error) {
-                console.warn("Не удалось скопировать уровень", error);
-            }
-        });
-    });
-})();
-
-(function initializeProfitCalculator() {
-    const calculator = document.getElementById("profit-calculator");
-    const input = document.getElementById("profit-base-price");
-    const marketButton = document.getElementById("use-market-price");
-    const target15 = document.getElementById("calculator-target-15");
-    const target20 = document.getElementById("calculator-target-20");
-
-    if (!calculator || !input || !target15 || !target20) {
-        return;
-    }
-
-    const marketPrice = Number(calculator.dataset.marketPrice || 0);
-
-    function formatCalculatorPrice(value) {
-        return Number(value).toLocaleString("ru-RU", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-    }
-
-    function updateCalculator() {
-        const basePrice = Number(input.value);
-
-        if (!Number.isFinite(basePrice) || basePrice <= 0) {
-            target15.textContent = "—";
-            target20.textContent = "—";
-            return;
-        }
-
-        target15.textContent = formatCalculatorPrice(basePrice * 1.015);
-        target20.textContent = formatCalculatorPrice(basePrice * 1.020);
-    }
-
-    input.addEventListener("input", updateCalculator);
-
-    if (marketButton) {
-        marketButton.addEventListener("click", () => {
-            if (marketPrice > 0) {
-                input.value = marketPrice.toFixed(2);
-                updateCalculator();
-                input.focus();
-            }
-        });
-    }
-
-    updateCalculator();
 })();

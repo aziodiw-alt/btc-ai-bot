@@ -13,51 +13,19 @@
 <body>
     <main class="container">
         <div class="dashboard-title-row">
-            <div class="brand-lockup">
-                <div class="brand-mark" aria-hidden="true">
-                    <span class="brand-coin">₿</span>
-                    <span class="brand-ai">AI</span>
-                </div>
-                <div class="brand-copy">
-                    <span class="brand-eyebrow">Market intelligence</span>
-                    <h1>{{ asset_info["asset"] }} AI Dashboard</h1>
-                    <p class="strategy-description">
-                        {{ result.get("strategy_description", "") if result else "" }}
-                    </p>
-                </div>
+            <div>
+                <h1>{{ asset_info["icon"] }} {{ asset_info["asset"] }} AI Dashboard</h1>
+                <p class="strategy-description">
+                    {{ result.get("strategy_description", "") if result else "" }}
+                </p>
             </div>
 
             <div class="dashboard-switchers">
-                <div class="exchange-control">
-                    <span class="switcher-label">Аккаунт биржи</span>
-                    <nav class="exchange-switcher" aria-label="Выбор биржи">
-                        <a
-                            class="exchange-button exchange-bybit {{ 'is-active' if active_exchange == 'bybit' else '' }}"
-                            href="{{ url_for('home', symbol=active_symbol, strategy=active_strategy, exchange='bybit') }}"
-                        >
-                            <span class="exchange-button-icon exchange-button-icon-bybit">B</span>
-                            <span>
-                                <strong>Bybit</strong>
-                                <small>USDT</small>
-                            </span>
-                        </a>
-                        <a
-                            class="exchange-button exchange-okx {{ 'is-active' if active_exchange == 'okx' else '' }}"
-                            href="{{ url_for('home', symbol=active_symbol, strategy=active_strategy, exchange='okx') }}"
-                        >
-                            <span class="exchange-button-icon exchange-button-icon-okx">O</span>
-                            <span>
-                                <strong>OKX</strong>
-                                <small>USDC</small>
-                            </span>
-                        </a>
-                    </nav>
-                </div>
                 <nav class="asset-switcher" aria-label="Выбор валюты">
                     {% for asset in supported_symbols %}
                         <a
                             class="asset-button {{ 'is-active' if asset['symbol'] == active_symbol else '' }}"
-                            href="{{ url_for('home', symbol=asset['symbol'], strategy=active_strategy, exchange=active_exchange) }}"
+                            href="{{ url_for('home', symbol=asset['symbol'], strategy=active_strategy) }}"
                         >
                             {{ asset["icon"] }} {{ asset["asset"] }}
                         </a>
@@ -67,86 +35,28 @@
             <nav class="strategy-switcher" aria-label="Выбор стратегии">
                 <a
                     class="strategy-button {{ 'is-active' if active_strategy == 'swing' else '' }}"
-                    href="{{ url_for('home', symbol=active_symbol, strategy='swing', exchange=active_exchange) }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='swing') }}"
                 >
                     Swing
                     <small>1D + 4H</small>
                 </a>
                 <a
                     class="strategy-button strategy-fast {{ 'is-active' if active_strategy == 'fast' else '' }}"
-                    href="{{ url_for('home', symbol=active_symbol, strategy='fast', exchange=active_exchange) }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='fast') }}"
                 >
                     Fast
                     <small>4H + 1H · тест</small>
                 </a>
+                <a
+                    class="strategy-button strategy-alpha {{ 'is-active' if active_strategy == 'alpha' else '' }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='alpha') }}"
+                >
+                    Alpha
+                    <small>1D + 4H · conservative</small>
+                </a>
             </nav>
             </div>
         </div>
-
-        <section class="exchange-account-bar exchange-account-{{ active_exchange }}">
-            <div class="exchange-account-heading">
-                <span class="exchange-account-name">
-                    {{ "OKX" if active_exchange == "okx" else "Bybit" }}
-                </span>
-                {% if active_exchange == "okx" and okx_account and okx_account["connected"] %}
-                    <span class="connection-badge is-connected">Подключено · только чтение</span>
-                {% elif active_exchange == "okx" %}
-                    <span class="connection-badge is-error">Нет соединения</span>
-                {% else %}
-                    <span class="connection-badge is-market">Основная биржа</span>
-                {% endif %}
-            </div>
-
-            {% if active_exchange == "okx" %}
-                {% if okx_account_error %}
-                    <p class="exchange-account-error">{{ okx_account_error }}</p>
-                {% elif okx_account %}
-                    <div class="portfolio-balance-area">
-                        <div class="portfolio-total">
-                            <span>Общий баланс</span>
-                            <strong>
-                                <small>≈</small>
-                                {{ "{:,.2f}".format(okx_account["total_usd"]) }}
-                                <em>USD</em>
-                            </strong>
-                        </div>
-
-                        <div class="balance-visibility-control">
-                            <label class="balance-filter-toggle" for="hide-small-balances">
-                                <input id="hide-small-balances" type="checkbox">
-                                <span class="balance-filter-switch" aria-hidden="true"></span>
-                                <span>Скрыть баланс меньше $1</span>
-                            </label>
-                        </div>
-
-                        <div id="exchange-balances" class="exchange-balances">
-                            {% for balance in okx_account["currencies"] %}
-                                <span
-                                    class="exchange-balance"
-                                    data-usd-value="{{ balance['usd_value'] }}"
-                                >
-                                    <span class="balance-currency">{{ balance["currency"] }}</span>
-                                    <span class="balance-amount">
-                                        {{ "{:,.8f}".format(balance["total"]).rstrip("0").rstrip(".") }}
-                                    </span>
-                                    <small>
-                                        Доступно:
-                                        {{ "{:,.8f}".format(balance["available"]).rstrip("0").rstrip(".") }}
-                                    </small>
-                                    <em>≈ ${{ "{:,.2f}".format(balance["usd_value"]) }}</em>
-                                </span>
-                            {% else %}
-                                <span class="exchange-balance-empty">Ненулевые балансы не найдены</span>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% endif %}
-            {% else %}
-                <p class="exchange-account-note">
-                    Анализ рынка и текущая история Bybit остаются без изменений.
-                </p>
-            {% endif %}
-        </section>
 
         {% if error %}
             <div class="error">
@@ -158,7 +68,7 @@
             {% set is_skip = "SKIP" in decision_upper or grade_upper in ["SKIP", "C"] %}
             {% set is_wait = not is_skip and ("WAIT" in decision_upper or grade_upper in ["WAIT", "B"]) %}
             <section>
-                <div class="cards analytics-strip">
+                <div class="cards">
                     <div class="card price-card">
                         <div class="price-card-symbol">
                             <span class="price-card-icon">{{ asset_info["icon"] }}</span>
@@ -174,9 +84,7 @@
                                 {{ "{:,.2f}".format(result["price"]).replace(",", " ") }}
                             {% endif %}
                         </div>
-                        <span class="price-card-quote">
-                            {{ "USDC" if active_exchange == "okx" else "USDT" }}
-                        </span>
+                        <span class="price-card-quote">USDT</span>
                     </div>
 
                     <div class="card">
@@ -223,30 +131,9 @@
                         <div class="value">{{ result["sentiment_score"] }}/{{ result.get("sentiment_max", 30) }}</div>
                     </div>
 
-                    <div class="card metric-card grade-card">
+                    <div class="card">
                         <div class="label">{{ result.get("rsi_label", "RSI 4H") }}</div>
                         <div class="value">{{ result["rsi_4h"] }}</div>
-                    </div>
-
-                    <div class="card metric-card market-regime-card">
-                        <div class="label">Режим рынка · Решение</div>
-                        <div class="value market-mode market-mode-{{ result.get('market_mode', 'RANGE')|lower }}">
-                            {{ result.get("market_mode_label", result.get("market_mode", "—")) }}
-                        </div>
-                        <div class="market-decision-inline
-                            {% if is_skip %}
-                                status-skip
-                            {% elif is_wait %}
-                                status-wait
-                            {% else %}
-                                status-buy
-                            {% endif %}
-                        ">
-                            {{ result["decision"] }}
-                        </div>
-                        <div class="score-breakdown">
-                            {{ result.get("market_mode_description", "") }}
-                        </div>
                     </div>
                 </div>
             </section>
@@ -255,10 +142,7 @@
                 <div class="chart-panel">
                     <div class="chart-heading">
                         <h2 class="section-title">
-                            График
-                            {{ active_symbol.replace("USDT", "/USD (USDC)") if active_exchange == "okx" else asset_info["display"] }}
-                            · {{ active_exchange|upper }}
-                            · <span id="chart-timeframe-label">{{ "1H" if active_strategy == "fast" else "4H" }}</span>
+                            График {{ asset_info["display"] }} · <span id="chart-timeframe-label">{{ "1H" if active_strategy == "fast" else "4H" }}</span>
                         </h2>
 
                         <div class="timeframe-switcher" aria-label="Таймфрейм графика">
@@ -301,7 +185,6 @@
                             data-api-url="{{ url_for('chart_data') }}"
                             data-strategy="{{ active_strategy }}"
                             data-symbol="{{ active_symbol }}"
-                            data-exchange="{{ active_exchange }}"
                             data-default-timeframe="{{ '60' if active_strategy == 'fast' else '240' }}"
                             data-default-timeframe-label="{{ '1H' if active_strategy == 'fast' else '4H' }}"
                         ></div>
@@ -311,39 +194,10 @@
                     </div>
 
                     <div class="chart-legend" aria-label="Обозначения графика">
-                        <span>
-                            <i class="legend-dot support"></i>
-                            <span id="legend-support">
-                                Поддержка / Buy Zone 1:
-                                {{ "{:,.0f}".format(result["buy_zone_1"][0]).replace(",", " ") }}
-                                –
-                                {{ "{:,.0f}".format(result["buy_zone_1"][1]).replace(",", " ") }}
-                            </span>
-                        </span>
-                        <span>
-                            <i class="legend-dot resistance"></i>
-                            <span id="legend-resistance">
-                                Сопротивление:
-                                {{ "{:,.0f}".format(result["resistance"]).replace(",", " ") }}
-                            </span>
-                        </span>
-                        <span>
-                            <i class="legend-dot buy"></i>
-                            <span id="legend-buy-zone-2">
-                                Buy Zone 2:
-                                {{ "{:,.0f}".format(result["buy_zone_2"][0]).replace(",", " ") }}
-                                –
-                                {{ "{:,.0f}".format(result["buy_zone_2"][1]).replace(",", " ") }}
-                            </span>
-                        </span>
-                        <span>
-                            <i class="legend-dot target"></i>
-                            <span id="legend-targets">
-                                SL {{ "{:,.0f}".format(result["stop_loss"]).replace(",", " ") }}
-                                · TP1 {{ "{:,.0f}".format(result["take_profit_1"]).replace(",", " ") }}
-                                · TP2 {{ "{:,.0f}".format(result["take_profit_2"]).replace(",", " ") }}
-                            </span>
-                        </span>
+                        <span><i class="legend-dot support"></i>Поддержка</span>
+                        <span><i class="legend-dot resistance"></i>Сопротивление</span>
+                        <span><i class="legend-dot buy"></i>Зоны покупки</span>
+                        <span><i class="legend-dot target"></i>TP / SL</span>
                     </div>
                 </div>
 
@@ -358,7 +212,38 @@
                 ></div>
 
                 <aside class="strategy-panel">
+                    <div class="decision
+                        {% if is_skip %}
+                            decision-skip
+                        {% elif is_wait %}
+                            decision-wait
+                        {% else %}
+                            decision-buy
+                        {% endif %}
+                    ">
+                        <div class="label">Решение стратегии</div>
+                        <div class="decision-value
+                            {% if is_skip %}
+                                status-skip
+                            {% elif is_wait %}
+                                status-wait
+                            {% else %}
+                                status-buy
+                            {% endif %}
+                        ">
+                            {{ result["decision"] }}
+                        </div>
+                    </div>
+
                     <h2 class="section-title">Торговые уровни</h2>
+
+                    {% if active_strategy == "alpha" %}
+                        <div class="alpha-price-separation">
+                            <div><span>Текущая цена</span><strong>{{ "{:,.0f}".format(result["current_price"]).replace(",", " ") }}</strong></div>
+                            <div><span>Планируемая средняя</span><strong>{{ "{:,.0f}".format(result["planned_entry"]).replace(",", " ") }}</strong></div>
+                            <small>Alpha не предлагает покупать по текущей цене: заявки ждут отката.</small>
+                        </div>
+                    {% endif %}
 
                     <div class="levels">
                         <div class="card level-card level-buy">
@@ -367,20 +252,6 @@
                                 {{ "{:,.0f}".format(result["buy_zone_1"][0]).replace(",", " ") }}
                                 –
                                 {{ "{:,.0f}".format(result["buy_zone_1"][1]).replace(",", " ") }}
-                            </div>
-                            <div class="level-actions">
-                                <span>
-                                    Средняя:
-                                    <strong id="buy-zone-1-average">
-                                        {{ "{:,.0f}".format((result["buy_zone_1"][0] + result["buy_zone_1"][1]) / 2).replace(",", " ") }}
-                                    </strong>
-                                </span>
-                                <button
-                                    class="copy-level-button"
-                                    type="button"
-                                    data-copy-target="buy-zone-1-average"
-                                    aria-label="Копировать среднюю цену Buy Zone 1"
-                                >Копировать</button>
                             </div>
                         </div>
 
@@ -391,34 +262,12 @@
                                 –
                                 {{ "{:,.0f}".format(result["buy_zone_2"][1]).replace(",", " ") }}
                             </div>
-                            <div class="level-actions">
-                                <span>
-                                    Средняя:
-                                    <strong id="buy-zone-2-average">
-                                        {{ "{:,.0f}".format((result["buy_zone_2"][0] + result["buy_zone_2"][1]) / 2).replace(",", " ") }}
-                                    </strong>
-                                </span>
-                                <button
-                                    class="copy-level-button"
-                                    type="button"
-                                    data-copy-target="buy-zone-2-average"
-                                    aria-label="Копировать среднюю цену Buy Zone 2"
-                                >Копировать</button>
-                            </div>
                         </div>
 
                         <div class="card level-card level-stop">
                             <div class="label">Stop Loss</div>
                             <div id="stop-loss" class="value level-value">
                                 {{ "{:,.0f}".format(result["stop_loss"]).replace(",", " ") }}
-                            </div>
-                            <div class="level-actions level-actions-single">
-                                <span>Точное значение</span>
-                                <button
-                                    class="copy-level-button"
-                                    type="button"
-                                    data-copy-target="stop-loss"
-                                >Копировать</button>
                             </div>
                         </div>
 
@@ -427,14 +276,6 @@
                             <div id="take-profit-1" class="value level-value">
                                 {{ "{:,.0f}".format(result["take_profit_1"]).replace(",", " ") }}
                             </div>
-                            <div class="level-actions level-actions-single">
-                                <span>Точное значение</span>
-                                <button
-                                    class="copy-level-button"
-                                    type="button"
-                                    data-copy-target="take-profit-1"
-                                >Копировать</button>
-                            </div>
                         </div>
 
                         <div class="card level-card level-target-strong">
@@ -442,189 +283,29 @@
                             <div id="take-profit-2" class="value level-value">
                                 {{ "{:,.0f}".format(result["take_profit_2"]).replace(",", " ") }}
                             </div>
-                            <div class="level-actions level-actions-single">
-                                <span>Точное значение</span>
-                                <button
-                                    class="copy-level-button"
-                                    type="button"
-                                    data-copy-target="take-profit-2"
-                                >Копировать</button>
-                            </div>
                         </div>
                     </div>
+
+                    {% if active_strategy == "alpha" %}
+                        <div class="alpha-plan">
+                            <h3>Пошаговый вход</h3>
+                            {% for entry in result["entry_plan"] %}
+                                <div class="alpha-entry-row">
+                                    <span>{{ entry["label"] }}</span>
+                                    <strong>{{ entry["allocation_pct"] }}%</strong>
+                                    <span>{{ "{:,.0f}".format(entry["price"]).replace(",", " ") }}</span>
+                                </div>
+                            {% endfor %}
+                            <div class="alpha-trailing">
+                                <strong>Защита прибыли после TP1</strong>
+                                <span>Стоп выше средней: {{ "{:,.0f}".format(result["trailing_stop"]["protected_stop"]).replace(",", " ") }}</span>
+                                <span>Трейлинг: {{ result["trailing_stop"]["trail_distance_pct"] }}%</span>
+                            </div>
+                        </div>
+                    {% endif %}
                 </aside>
             </section>
 
-            <section
-                id="profit-calculator"
-                class="profit-calculator"
-                data-market-price="{{ result['price'] }}"
-            >
-                <div class="profit-calculator-heading">
-                    <div>
-                        <span class="sell-advice-eyebrow">Своя цена или цена с биржи</span>
-                        <h2>Калькулятор продажи +1,5% / +2,0%</h2>
-                    </div>
-                    <button
-                        id="use-market-price"
-                        class="calculator-market-button"
-                        type="button"
-                    >
-                        Подставить цену с {{ active_exchange|upper }}
-                    </button>
-                </div>
-
-                <div class="profit-calculator-grid">
-                    <label class="calculator-input-card" for="profit-base-price">
-                        <span>Исходная цена</span>
-                        <div class="calculator-input-wrap">
-                            <input
-                                id="profit-base-price"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value="{{ result['price'] }}"
-                                inputmode="decimal"
-                            >
-                            <strong>{{ "USDC" if active_exchange == "okx" else "USDT" }}</strong>
-                        </div>
-                    </label>
-
-                    <div class="calculator-result-card calculator-result-15">
-                        <span>Цена +1,5%</span>
-                        <strong>
-                            <b id="calculator-target-15">—</b>
-                            {{ "USDC" if active_exchange == "okx" else "USDT" }}
-                        </strong>
-                        <button
-                            class="copy-level-button"
-                            type="button"
-                            data-copy-target="calculator-target-15"
-                        >Копировать</button>
-                    </div>
-
-                    <div class="calculator-result-card calculator-result-20">
-                        <span>Цена +2,0%</span>
-                        <strong>
-                            <b id="calculator-target-20">—</b>
-                            {{ "USDC" if active_exchange == "okx" else "USDT" }}
-                        </strong>
-                        <button
-                            class="copy-level-button"
-                            type="button"
-                            data-copy-target="calculator-target-20"
-                        >Копировать</button>
-                    </div>
-                </div>
-
-                <p class="sell-advice-note">
-                    Калькулятор считает проценты непосредственно от введённой цены.
-                    Комиссии здесь не вычитаются; расчёт чистой прибыли с комиссиями находится в блоке «Совет по продаже».
-                </p>
-            </section>
-
-            <section class="sell-advice-panel">
-                <div class="sell-advice-heading">
-                    <div>
-                        <span class="sell-advice-eyebrow">Расчёт по предыдущим сделкам</span>
-                        <h2>Совет по продаже</h2>
-                    </div>
-                    <span class="sell-advice-badge">Комиссии учтены</span>
-                </div>
-
-                {% if sell_advice["available"] %}
-                    <div class="sell-advice-grid">
-                        <div class="sell-advice-card sell-advice-basis">
-                            <span>Средняя себестоимость</span>
-                            <strong>
-                                {{ "{:,.0f}".format(sell_advice["average_buy_price"]).replace(",", " ") }}
-                                {{ sell_advice["quote_currency"] }}
-                            </strong>
-                            <small>
-                                Остаток:
-                                {{ "%.8f"|format(sell_advice["quantity"]) }}
-                                {{ asset_info["asset"] }}
-                            </small>
-                        </div>
-
-                        <div class="sell-advice-card sell-advice-target">
-                            <span>Продажа для чистых +1,5%</span>
-                            <strong>
-                                <b id="sell-advice-target-15">
-                                    {{ "{:,.0f}".format(sell_advice["target_price_15"]).replace(",", " ") }}
-                                </b>
-                                USDT
-                            </strong>
-                            <small>
-                                До цели:
-                                {{ "{:+.2f}".format(sell_advice["distance_15_pct"]) }}%
-                                · прибыль ≈
-                                {{ "%.2f"|format(sell_advice["profit_15"]) }}
-                                {{ sell_advice["quote_currency"] }}
-                            </small>
-                            <button
-                                class="copy-level-button sell-advice-copy"
-                                type="button"
-                                data-copy-target="sell-advice-target-15"
-                            >Копировать цену</button>
-                        </div>
-
-                        <div class="sell-advice-card sell-advice-target-strong">
-                            <span>Продажа для чистых +2,0%</span>
-                            <strong>
-                                <b id="sell-advice-target-20">
-                                    {{ "{:,.0f}".format(sell_advice["target_price_20"]).replace(",", " ") }}
-                                </b>
-                                {{ sell_advice["quote_currency"] }}
-                            </strong>
-                            <small>
-                                До цели:
-                                {{ "{:+.2f}".format(sell_advice["distance_20_pct"]) }}%
-                                · прибыль ≈
-                                {{ "%.2f"|format(sell_advice["profit_20"]) }}
-                                {{ sell_advice["quote_currency"] }}
-                            </small>
-                            <button
-                                class="copy-level-button sell-advice-copy"
-                                type="button"
-                                data-copy-target="sell-advice-target-20"
-                            >Копировать цену</button>
-                        </div>
-
-                        <div class="sell-advice-card sell-advice-position">
-                            <span>Доступно для нового SELL</span>
-                            <strong>
-                                {{ "%.8f"|format(sell_advice["free_quantity"]) }}
-                                {{ asset_info["asset"] }}
-                            </strong>
-                            {% if sell_advice["free_value_quote"] is not none %}
-                            <small class="sell-advice-fiat-value">
-                                ≈
-                                {{ "{:,.2f}".format(sell_advice["free_value_quote"]).replace(",", " ") }}
-                                {{ sell_advice["quote_currency"] }}
-                            </small>
-                            {% endif %}
-                            <small>
-                                Уже в SELL:
-                                {{ "%.8f"|format(sell_advice["reserved_quantity"]) }}
-                            </small>
-                        </div>
-                    </div>
-                    <p class="sell-advice-note">
-                        Цена рассчитана по FIFO-себестоимости оставшихся покупок.
-                        Комиссия покупки уже входит в себестоимость; комиссия будущей продажи учтена отдельно.
-                        {% if active_exchange == "okx" %}
-                            Использованы исполнения пары {{ asset_info["asset"] }}-USDC из истории OKX.
-                        {% endif %}
-                    </p>
-                {% else %}
-                    <div class="sell-advice-empty">
-                        {{ sell_advice["reason"] }}
-                    </div>
-                {% endif %}
-            </section>
-
-            {% if active_exchange == "bybit" %}
             <section id="open-orders" class="open-orders-panel open-orders-below-chart">
                 <div class="open-orders-heading">
                     <div>
@@ -678,21 +359,14 @@
                         </strong>
                     </div>
                     <div class="open-order-summary-card">
-                        <span>
-                            {% if open_order_summary["profit_is_complete"] %}
-                                Ожидаемая чистая прибыль
-                            {% else %}
-                                Частичный расчёт прибыли
-                            {% endif %}
-                        </span>
+                        <span>Ожидаемая чистая прибыль</span>
                         {% if open_order_summary["expected_profit_pct"] is not none %}
                             <strong class="{{ 'status-buy' if open_order_summary['expected_profit'] >= 0 else 'status-skip' }}">
                                 {{ "{:+.2f}".format(open_order_summary["expected_profit"]) }} USDT
                             </strong>
                             <small>
                                 {{ "{:+.2f}".format(open_order_summary["expected_profit_pct"]) }}%
-                                · покрыто покупками:
-                                {{ "%.1f"|format(open_order_summary["profit_coverage_pct"]) }}%
+                                · рассчитано SELL: {{ open_order_summary["calculated_sell_count"] }}
                             </small>
                         {% else %}
                             <strong>—</strong>
@@ -701,24 +375,15 @@
                     </div>
                 </div>
 
+                <p class="table-resize-hint">
+                    ↔ Ширину колонок можно менять, потянув границу заголовка. Двойной щелчок сбрасывает размеры.
+                </p>
                 <div class="history-table-scroll">
                     <table
                         id="open-orders-table"
                         class="history-table open-orders-table"
                         data-symbol="{{ active_symbol }}"
                     >
-                        <colgroup>
-                            <col class="order-column-date">
-                            <col class="order-column-side">
-                            <col class="order-column-strategy">
-                            <col class="order-column-price">
-                            <col class="order-column-quantity">
-                            <col class="order-column-value">
-                            <col class="order-column-distance">
-                            <col class="order-column-result">
-                            <col class="order-column-id">
-                            <col class="order-column-actions">
-                        </colgroup>
                         <thead>
                             <tr>
                                 <th>Дата</th>
@@ -736,8 +401,8 @@
                         <tbody>
                             {% for order in open_orders %}
                                 <tr>
-                                    <td class="order-date-cell">{{ order["created_at"]|local_datetime }}</td>
-                                    <td class="order-side-cell {{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
+                                    <td>{{ order["created_at"]|local_datetime }}</td>
+                                    <td class="{{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
                                         {{ order["side"] }}
                                     </td>
                                     <td>
@@ -758,37 +423,21 @@
                                             </span>
                                         {% endif %}
                                     </td>
-                                    <td class="order-number-cell">{{ "{:,.0f}".format(order["order_price"]).replace(",", " ") }}</td>
-                                    <td class="order-number-cell">{{ "%.8f"|format(order["order_quantity"]) }}</td>
-                                    <td class="order-value-cell">
-                                        <strong>{{ "%.2f"|format(order["order_value"]) }}</strong>
-                                        <small>USDT</small>
-                                    </td>
-                                    <td class="order-distance-cell">
+                                    <td>{{ "{:,.0f}".format(order["order_price"]).replace(",", " ") }}</td>
+                                    <td>{{ "%.8f"|format(order["order_quantity"]) }}</td>
+                                    <td>{{ "%.2f"|format(order["order_value"]) }} USDT</td>
+                                    <td>
                                         {% if order["distance_pct"] is not none %}
                                             {{ "%.2f"|format(order["distance_pct"]) }}%
                                         {% else %}
                                             —
                                         {% endif %}
                                     </td>
-                                    <td class="order-result-cell">
+                                    <td>
                                         {% if order["estimated_profit_usdt"] is not none %}
-                                            <strong class="order-result-main {{ 'status-buy' if order['estimated_profit_usdt'] >= 0 else 'status-skip' }}">
-                                                {% if not order["profit_is_complete"] %}
-                                                    <small>Частичный расчёт</small>
-                                                {% endif %}
+                                            <span class="{{ 'status-buy' if order['estimated_profit_usdt'] >= 0 else 'status-skip' }}">
                                                 {{ "{:+.2f}".format(order["estimated_profit_usdt"]) }} USDT
-                                                <em>{{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%</em>
-                                            </strong>
-                                            {% if not order["profit_is_complete"] %}
-                                                <span class="order-result-detail">
-                                                    Покрытие покупками:
-                                                    {{ "%.1f"|format(order["profit_coverage_pct"]) }}%
-                                                </span>
-                                            {% endif %}
-                                            <span class="order-result-detail">
-                                                Средняя покупка
-                                                {{ "{:,.0f}".format(order["average_buy_price"]).replace(",", " ") }}
+                                                ({{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%)
                                             </span>
                                         {% elif order["side"] == "BUY" %}
                                             <span class="table-muted">После исполнения</span>
@@ -796,8 +445,8 @@
                                             <span class="table-muted">Нет связанной покупки</span>
                                         {% endif %}
                                     </td>
-                                    <td class="order-id-cell">{{ order["order_id"] or "—" }}</td>
-                                    <td class="order-actions-cell">
+                                    <td>{{ order["order_id"] or "—" }}</td>
+                                    <td>
                                         <form
                                             class="order-fill-form"
                                             method="post"
@@ -832,204 +481,12 @@
                     </table>
                 </div>
             </section>
-            {% endif %}
-
-            {% if active_exchange == "okx" %}
-            <section id="okx-open-orders" class="open-orders-panel open-orders-below-chart">
-                <div class="open-orders-heading">
-                    <div>
-                        <h2 class="section-title">Открытые ордера OKX</h2>
-                        <p class="section-description">
-                            Активные и частично исполненные Spot-ордера, полученные напрямую через read-only API.
-                        </p>
-                    </div>
-                    <span class="connection-badge is-connected">
-                        Автоматическое чтение
-                    </span>
-                </div>
-
-                {% if okx_account_error %}
-                    <div class="form-message form-error">
-                        Не удалось получить ордера OKX: {{ okx_account_error }}
-                    </div>
-                {% else %}
-                    <div class="open-order-summary">
-                        <div class="open-order-summary-card">
-                            <span>Открытых ордеров</span>
-                            <strong>{{ okx_open_orders|length }}</strong>
-                        </div>
-                        <div class="open-order-summary-card">
-                            <span>BUY</span>
-                            <strong class="status-buy">
-                                {{ okx_open_orders|selectattr("side", "equalto", "BUY")|list|length }}
-                            </strong>
-                        </div>
-                        <div class="open-order-summary-card">
-                            <span>SELL</span>
-                            <strong class="status-skip">
-                                {{ okx_open_orders|selectattr("side", "equalto", "SELL")|list|length }}
-                            </strong>
-                        </div>
-                    </div>
-
-                    <div class="history-table-scroll">
-                        <table class="history-table open-orders-table">
-                            <thead>
-                                <tr>
-                                    <th>Дата</th>
-                                    <th>Пара</th>
-                                    <th>Сторона</th>
-                                    <th>Тип</th>
-                                    <th>Цена</th>
-                                    <th>Количество</th>
-                                    <th>Исполнено</th>
-                                    <th>Осталось</th>
-                                    <th>Сумма остатка</th>
-                                    <th>Ожидаемый результат</th>
-                                    <th>Статус</th>
-                                    <th>Order ID</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for order in okx_open_orders %}
-                                    <tr>
-                                        <td>{{ order["created_at"]|local_datetime }}</td>
-                                        <td>{{ order["instrument"] }}</td>
-                                        <td class="{{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">
-                                            {{ order["side"] }}
-                                        </td>
-                                        <td>{{ order["order_type"] }}</td>
-                                        <td>{{ "{:,.8f}".format(order["price"]).rstrip("0").rstrip(".") }}</td>
-                                        <td>{{ "{:,.8f}".format(order["size"]).rstrip("0").rstrip(".") }}</td>
-                                        <td>{{ "{:,.8f}".format(order["filled_size"]).rstrip("0").rstrip(".") }}</td>
-                                        <td>{{ "{:,.8f}".format(order["remaining_size"]).rstrip("0").rstrip(".") }}</td>
-                                        <td>
-                                            {{ "{:,.2f}".format(order["remaining_value"]) }}
-                                            {{ order["quote_currency"] }}
-                                        </td>
-                                        <td class="order-result-cell">
-                                            {% if order["estimated_profit_quote"] is not none %}
-                                                <strong class="order-result-main {{ 'status-buy' if order['estimated_profit_quote'] >= 0 else 'status-skip' }}">
-                                                    {% if not order["profit_is_complete"] %}
-                                                        <small>Частичный расчёт</small>
-                                                    {% endif %}
-                                                    {{ "{:+.2f}".format(order["estimated_profit_quote"]) }}
-                                                    {{ order["quote_currency"] }}
-                                                    <em>
-                                                        {{ "{:+.2f}".format(order["estimated_profit_pct"]) }}%
-                                                    </em>
-                                                </strong>
-                                                {% if not order["profit_is_complete"] %}
-                                                    <span class="order-result-detail">
-                                                        Покрытие покупками:
-                                                        {{ "%.1f"|format(order["profit_coverage_pct"]) }}%
-                                                    </span>
-                                                {% endif %}
-                                                <span class="order-result-detail">
-                                                    Средняя покупка
-                                                    {{ "{:,.2f}".format(order["average_buy_price"]) }}
-                                                    {{ order["quote_currency"] }}
-                                                </span>
-                                            {% elif order["side"] == "BUY" %}
-                                                <span class="table-muted">После исполнения</span>
-                                            {% else %}
-                                                <span class="table-muted">
-                                                    Нет связанной покупки в истории OKX
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            <span class="history-status history-wait">
-                                                {{ order["state"] }}
-                                            </span>
-                                        </td>
-                                        <td>{{ order["order_id"] }}</td>
-                                    </tr>
-                                {% else %}
-                                    <tr>
-                                        <td class="history-empty" colspan="12">
-                                            На OKX сейчас нет открытых Spot-ордеров.
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% endif %}
-            </section>
-            {% endif %}
-
-            {% if active_exchange == "okx" %}
-            <section id="okx-trade-history" class="open-orders-panel open-orders-below-chart">
-                <div class="open-orders-heading">
-                    <div>
-                        <h2 class="section-title">История сделок OKX</h2>
-                        <p class="section-description">
-                            Исполненные Spot-покупки и продажи за последние 3 месяца.
-                        </p>
-                    </div>
-                    <span class="connection-badge is-connected">
-                        {{ okx_trade_history|length }} операций
-                    </span>
-                </div>
-
-                {% if okx_account_error %}
-                    <div class="form-message form-error">
-                        Не удалось получить историю OKX: {{ okx_account_error }}
-                    </div>
-                {% else %}
-                    <div class="history-table-scroll">
-                        <table class="history-table open-orders-table">
-                            <thead>
-                                <tr>
-                                    <th>Дата</th>
-                                    <th>Пара</th>
-                                    <th>Сторона</th>
-                                    <th>Цена</th>
-                                    <th>Количество</th>
-                                    <th>Сумма</th>
-                                    <th>Комиссия</th>
-                                    <th>Trade ID</th>
-                                    <th>Order ID</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for trade in okx_trade_history %}
-                                    <tr>
-                                        <td>{{ trade["created_at"]|local_datetime }}</td>
-                                        <td>{{ trade["instrument"] }}</td>
-                                        <td class="{{ 'status-buy' if trade['side'] == 'BUY' else 'status-skip' }}">
-                                            {{ trade["side"] }}
-                                        </td>
-                                        <td>{{ "{:,.8f}".format(trade["price"]).rstrip("0").rstrip(".") }}</td>
-                                        <td>{{ "{:,.8f}".format(trade["size"]).rstrip("0").rstrip(".") }}</td>
-                                        <td>{{ "{:,.2f}".format(trade["value"]) }}</td>
-                                        <td>
-                                            {{ "{:,.8f}".format(trade["fee"]).rstrip("0").rstrip(".") }}
-                                            {{ trade["fee_currency"] }}
-                                        </td>
-                                        <td>{{ trade["trade_id"] }}</td>
-                                        <td>{{ trade["order_id"] }}</td>
-                                    </tr>
-                                {% else %}
-                                    <tr>
-                                        <td class="history-empty" colspan="9">
-                                            На OKX пока нет исполненных Spot-сделок за последние 3 месяца.
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                {% endif %}
-            </section>
-            {% endif %}
 
             <section>
                 <h2 class="section-title">Объяснение стратегии</h2>
 
                 <div class="analysis-grid">
-                    <div class="card metric-card">
+                    <div class="card">
                         <div class="label">✅ Причины</div>
                         <ul>
                             {% for reason in result["reasons"] %}
@@ -1038,7 +495,7 @@
                         </ul>
                     </div>
 
-                    <div class="card metric-card">
+                    <div class="card">
                         <div class="label">⚠️ Предупреждения</div>
                         <ul>
                             {% for warning in result["warnings"] %}
@@ -1179,22 +636,22 @@
                 </div>
 
                 <div class="history-stats">
-                    <div class="card metric-card indicators-card">
+                    <div class="card">
                         <div class="label">Всего анализов</div>
                         <div class="value">{{ stats["total"] }}</div>
                     </div>
 
-                    <div class="card metric-card">
+                    <div class="card">
                         <div class="label">Средний Score</div>
                         <div class="value">{{ stats["average_score"] }}</div>
                     </div>
 
-                    <div class="card metric-card">
+                    <div class="card">
                         <div class="label">BUY</div>
                         <div class="value status-buy">{{ stats["buy_count"] }}</div>
                     </div>
 
-                    <div class="card metric-card market-regime-card">
+                    <div class="card">
                         <div class="label">WAIT</div>
                         <div class="value status-wait">{{ stats["wait_count"] }}</div>
                     </div>
@@ -1245,7 +702,6 @@
                 </div>
             </section>
 
-            {% if active_exchange == "bybit" %}
             <section id="trades">
                 <div class="trades-heading">
                     <div>
@@ -1469,7 +925,6 @@
                     </div>
                 </div>
             </section>
-            {% endif %}
         {% endif %}
     </main>
 
