@@ -220,6 +220,38 @@ class DashboardAnalysisContractTest(unittest.TestCase):
         self.assertEqual(second.get_json()["report"], "REPORT TWO")
         self.assertFalse(second.get_json()["cached"])
 
+    @patch("web.app._get_cached_strategy")
+    def test_ai_zone_commentary_uses_selected_market_context(
+        self,
+        get_cached_strategy,
+    ):
+        strategy_result = {
+            "price": 63832,
+            "buy_zone_1": [63555, 63683],
+            "buy_zone_2": [63349, 63483],
+            "resistance": 65736,
+        }
+        get_cached_strategy.return_value = strategy_result
+        fake_ai_module = types.SimpleNamespace(
+            generate_zone_commentary=lambda result: "ZONE COMMENTARY"
+        )
+
+        with patch.dict(sys.modules, {"ai_report": fake_ai_module}):
+            response = self.client.post(
+                "/api/ai-zone-commentary"
+                "?symbol=ETHUSDT&strategy=alpha&exchange=okx",
+                headers=self.auth_headers(),
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json(),
+            {"commentary": "ZONE COMMENTARY"},
+        )
+        get_cached_strategy.assert_called_once_with(
+            "alpha", "ETHUSDT", "okx"
+        )
+
     def test_request_values_are_normalized_to_supported_options(self):
         self.assertEqual(web_app._normalize_strategy_name("FAST"), "fast")
         self.assertEqual(web_app._normalize_strategy_name("alpha"), "alpha")
