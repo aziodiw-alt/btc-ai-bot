@@ -957,11 +957,30 @@
         return;
     }
 
-    const quantity = document.getElementById("rescue-base-quantity");
+    const positionValue = document.getElementById("rescue-position-value");
+    const inputMode = document.getElementById("rescue-input-mode");
+    const positionLabel = document.getElementById("rescue-position-label");
     const averageCost = document.getElementById("rescue-average-cost");
     const asset = document.getElementById("rescue-base-asset");
     const status = document.getElementById("alpha-rescue-status");
     const result = document.getElementById("alpha-rescue-result");
+
+    function updateInputMode() {
+        const quoteCurrency = calculator.dataset.quoteCurrency;
+        if (inputMode.value === "QUOTE") {
+            positionLabel.textContent = `Сумма позиции, ${quoteCurrency}`;
+            positionValue.step = "0.01";
+            positionValue.placeholder = "100";
+        } else {
+            positionLabel.textContent = `Количество ${asset.value}`;
+            positionValue.step = "0.00000001";
+            positionValue.placeholder = asset.value === "BTC" ? "0.001" : "0.1";
+        }
+    }
+
+    inputMode.addEventListener("change", updateInputMode);
+    asset.addEventListener("change", updateInputMode);
+    updateInputMode();
 
     function number(value, digits = 8) {
         if (value === null || value === undefined) {
@@ -976,9 +995,9 @@
     button.addEventListener("click", async () => {
         status.textContent = "";
         result.hidden = true;
-        const baseQuantity = Number(quantity.value);
-        if (!Number.isFinite(baseQuantity) || baseQuantity <= 0) {
-            status.textContent = "Введите количество BTC или ETH больше нуля.";
+        const enteredValue = Number(positionValue.value);
+        if (!Number.isFinite(enteredValue) || enteredValue <= 0) {
+            status.textContent = "Введите сумму или количество больше нуля.";
             return;
         }
 
@@ -990,7 +1009,8 @@
                 body: JSON.stringify({
                     exchange: calculator.dataset.exchange,
                     base_asset: asset.value,
-                    base_quantity: baseQuantity,
+                    base_quantity: inputMode.value === "COIN" ? enteredValue : null,
+                    base_value_usd: inputMode.value === "QUOTE" ? enteredValue : null,
                     average_cost_usd: averageCost.value || null,
                     minimum_net_gain_pct: 1.0,
                     fee_rate: 0.001
@@ -1004,6 +1024,7 @@
             document.getElementById("rescue-entry").textContent = number(payload.cross_entry_price, 8);
             document.getElementById("rescue-exit").textContent = number(payload.cross_exit_price, 8);
             document.getElementById("rescue-move").textContent = `${number(payload.cross_move_pct, 3)}% ${payload.required_cross_direction}`;
+            document.getElementById("rescue-before").textContent = `${number(payload.base_quantity_before, 8)} ${payload.base_asset} (${number(payload.input_quote_value, 2)} ${payload.input_quote_currency})`;
             document.getElementById("rescue-after").textContent = `${number(payload.base_quantity_after, 8)} ${payload.base_asset}`;
             document.getElementById("rescue-gain").textContent = `${number(payload.base_quantity_gain, 8)} ${payload.base_asset} (${number(payload.net_gain_pct, 3)}%)`;
             document.getElementById("rescue-usd").textContent = `$${number(payload.projected_value_usd_at_same_price, 2)}`;

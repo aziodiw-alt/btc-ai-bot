@@ -378,6 +378,9 @@ cross-price target required to return 1% more of the original base asset. It can
 also compare projected value with the user's USD cost basis. It never places
 orders and explicitly warns that increasing coin quantity does not guarantee
 USD recovery.
+The Dashboard accepts the starting position either as BTC/ETH quantity or as a
+USDT amount on Bybit / USDC amount on OKX, converting quote value with the live
+base-asset price before calculating the recovery cycle.
 
 ## Legacy module audit
 

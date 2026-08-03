@@ -399,6 +399,7 @@
                             class="alpha-rescue"
                             data-api-url="{{ url_for('alpha_rescue') }}"
                             data-exchange="{{ active_exchange }}"
+                            data-quote-currency="{{ 'USDC' if active_exchange == 'okx' else 'USDT' }}"
                         >
                             <div class="alpha-plan-heading">
                                 <span>Ваш спасательный круг</span>
@@ -412,8 +413,15 @@
                                 </select>
                             </label>
                             <label>
-                                Количество монет
-                                <input id="rescue-base-quantity" type="number" min="0" step="0.00000001" placeholder="0.01">
+                                Единица ввода
+                                <select id="rescue-input-mode">
+                                    <option value="QUOTE">{{ 'USDC' if active_exchange == 'okx' else 'USDT' }}</option>
+                                    <option value="COIN">Количество монет</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span id="rescue-position-label">Сумма позиции, {{ 'USDC' if active_exchange == 'okx' else 'USDT' }}</span>
+                                <input id="rescue-position-value" type="number" min="0" step="0.01" placeholder="100">
                             </label>
                             <label>
                                 Средняя цена покупки, USD
@@ -426,6 +434,7 @@
                                 <div><span>Текущий ETH/BTC</span><strong id="rescue-entry"></strong></div>
                                 <div><span>Целевой ETH/BTC</span><strong id="rescue-exit"></strong></div>
                                 <div><span>Нужно движение</span><strong id="rescue-move"></strong></div>
+                                <div><span>Монет до цикла</span><strong id="rescue-before"></strong></div>
                                 <div><span>Монет после цикла</span><strong id="rescue-after"></strong></div>
                                 <div><span>Чистый прирост</span><strong id="rescue-gain"></strong></div>
                                 <div><span>USD после цикла при той же цене</span><strong id="rescue-usd"></strong></div>

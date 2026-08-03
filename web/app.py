@@ -724,9 +724,23 @@ def alpha_rescue():
         eth_price = float(get_ticker("ETHUSDT", exchange=exchange)["price"])
         cross_price = eth_price / btc_price
         base_usd_price = btc_price if base_asset == "BTC" else eth_price
+        raw_quantity = payload.get("base_quantity")
+        raw_quote_value = payload.get("base_value_usd")
+        if raw_quantity not in (None, ""):
+            base_quantity = float(raw_quantity)
+            input_mode = "COIN"
+            input_quote_value = base_quantity * base_usd_price
+        elif raw_quote_value not in (None, ""):
+            input_quote_value = float(raw_quote_value)
+            if input_quote_value <= 0:
+                raise ValueError("Position value must be greater than zero")
+            base_quantity = input_quote_value / base_usd_price
+            input_mode = "QUOTE"
+        else:
+            raise ValueError("Base quantity or position value is required")
         result = calculate_rescue_plan(
             base_asset,
-            payload.get("base_quantity"),
+            base_quantity,
             cross_price,
             cross_exit_price=payload.get("cross_exit_price"),
             fee_rate=payload.get("fee_rate", 0.001),
@@ -735,6 +749,11 @@ def alpha_rescue():
             average_cost_usd=payload.get("average_cost_usd"),
         )
         result["exchange"] = exchange
+        result["input_mode"] = input_mode
+        result["input_quote_currency"] = (
+            "USDC" if exchange == "okx" else "USDT"
+        )
+        result["input_quote_value"] = input_quote_value
         return jsonify(result)
     except (TypeError, ValueError) as exc:
         return jsonify({"error": str(exc)}), 400

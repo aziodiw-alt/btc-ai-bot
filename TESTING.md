@@ -42,5 +42,5 @@ Before and after every behavior-preserving refactoring phase:
 4. Keep live API checks separate from the offline result.
 # Current baseline
 
-The Alpha Rescue feature baseline is **96 passing offline
+The Alpha Rescue quote-input baseline is **97 passing offline
 tests**, plus successful syntax compilation of the production Python modules.

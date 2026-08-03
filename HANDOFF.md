@@ -9,7 +9,7 @@ unchanged.
 
 Baseline at this checkpoint:
 
-- 96 offline tests passing;
+- 97 offline tests passing;
 - production Python modules compile successfully;
 - `ARCHITECTURE.md` contains the real data flow, dependency map, responsibility
   audit, phased plan, current phase status, and legacy-module audit;
@@ -74,7 +74,7 @@ See `TESTING.md` for details.
 Expected result at this checkpoint:
 
 ```text
-Ran 96 tests
+Ran 97 tests
 OK
 ```
 
@@ -89,14 +89,14 @@ Production-module syntax compilation also passed with `python -m compileall`.
 - Database consolidation or migration.
 - Further scoring changes, additional strategies, or new exchanges.
 
-These should each be handled as separate changes with the 96-test baseline
+These should each be handled as separate changes with the 97-test baseline
 green before and after.
 
 ## Recommended next step
 
 1. Review and commit the current architecture refactor as one checkpoint.
 2. Start the next product change in a separate commit.
-3. Before editing, run the offline suite and confirm the 96-test baseline.
+3. Before editing, run the offline suite and confirm the 97-test baseline.
 
 Suggested checkpoint commit message:
 
@@ -110,7 +110,7 @@ refactor: complete behavior-preserving architecture phases 0-6
 Continue BTC AI Terminal from the architecture checkpoint. First read
 HANDOFF.md, ARCHITECTURE.md, TESTING.md, and btc_terminal/README.md. Inspect git
 status and run run_offline_tests.py before changing code. The expected baseline
-is 96 passing tests. Preserve runtime behavior and database compatibility unless
+is 97 passing tests. Preserve runtime behavior and database compatibility unless
 I explicitly request a product-logic change.
 ```
 

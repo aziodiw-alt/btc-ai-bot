@@ -261,6 +261,31 @@ class DashboardAnalysisContractTest(unittest.TestCase):
             call("ETHUSDT", exchange="bybit"),
         ])
 
+    @patch("web.app.get_ticker")
+    def test_alpha_rescue_accepts_position_value_in_usdt(self, get_ticker):
+        get_ticker.side_effect = [
+            {"price": 60_000},
+            {"price": 1_800},
+        ]
+
+        response = self.client.post(
+            "/api/alpha-rescue",
+            json={
+                "exchange": "bybit",
+                "base_asset": "BTC",
+                "base_value_usd": 600,
+            },
+            headers=self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["input_mode"], "QUOTE")
+        self.assertEqual(payload["input_quote_currency"], "USDT")
+        self.assertEqual(payload["input_quote_value"], 600)
+        self.assertAlmostEqual(payload["base_quantity_before"], 0.01)
+        self.assertAlmostEqual(payload["base_quantity_after"], 0.0101)
+
     @patch("web.app._analysis_service.snapshot_callback")
     @patch("web.app._analysis_service.fast_analyzer")
     @patch("web.app._analysis_service.swing_analyzer")
