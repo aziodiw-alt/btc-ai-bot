@@ -489,12 +489,17 @@ def orders_page():
     symbol = _normalize_symbol(request.args.get("symbol", "BTCUSDT"))
     try:
         if has_unassigned_orders(symbol):
-            strategy_levels = {
-                "swing": _get_cached_strategy("swing", symbol),
-                "fast": _get_cached_strategy("fast", symbol),
-                "alpha": _get_cached_strategy("alpha", symbol),
-            }
-            classify_unassigned_orders(strategy_levels, symbol)
+            try:
+                strategy_levels = {
+                    "swing": _get_cached_strategy("swing", symbol),
+                    "fast": _get_cached_strategy("fast", symbol),
+                    "alpha": _get_cached_strategy("alpha", symbol),
+                }
+                classify_unassigned_orders(strategy_levels, symbol)
+            except Exception:
+                # Orders remain visible even when optional classification is
+                # unavailable; they can be classified on a later request.
+                pass
         orders = get_pending_orders(symbol=symbol)
         orders_error = None
     except Exception as exc:
@@ -558,11 +563,16 @@ def save_orders():
         symbol = _normalize_symbol(
             orders[0].get("symbol") if orders else "BTCUSDT"
         )
-        strategy_levels = {
-            "swing": _get_cached_strategy("swing", symbol),
-            "fast": _get_cached_strategy("fast", symbol),
-            "alpha": _get_cached_strategy("alpha", symbol),
-        }
+        # Strategy classification enriches an imported order, but it must not
+        # block saving when market data or an analyzer is temporarily down.
+        try:
+            strategy_levels = {
+                "swing": _get_cached_strategy("swing", symbol),
+                "fast": _get_cached_strategy("fast", symbol),
+                "alpha": _get_cached_strategy("alpha", symbol),
+            }
+        except Exception:
+            strategy_levels = None
         report = add_pending_orders(
             orders,
             strategy_levels=strategy_levels,
