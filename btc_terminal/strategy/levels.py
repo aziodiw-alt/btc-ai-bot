@@ -1,14 +1,11 @@
 """Support, resistance, entry-zone, stop, and target calculations."""
 
+from btc_terminal.strategy.level_zones import detect_strong_levels
+
 
 def calculate_support_resistance(frame, lookback=50):
-    """Return the lowest low and highest high in the selected window."""
-    recent = frame.tail(lookback)
-
-    if recent.empty:
-        raise ValueError("Cannot calculate levels from an empty candle set")
-
-    return float(recent["low"].min()), float(recent["high"].max())
+    """Return strong repeatedly tested levels from the selected window."""
+    return detect_strong_levels(frame, lookback=lookback)
 
 
 def calculate_trade_levels(
