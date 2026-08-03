@@ -228,6 +228,65 @@ class DashboardAnalysisContractTest(unittest.TestCase):
         self.assertEqual(web_app._normalize_exchange("OKX"), "okx")
         self.assertEqual(web_app._normalize_exchange("binance"), "bybit")
 
+    @patch("web.app.add_pending_orders")
+    @patch(
+        "web.app._get_cached_strategy",
+        side_effect=RuntimeError("market unavailable"),
+    )
+    def test_recognized_orders_are_saved_when_strategy_analysis_fails(
+        self,
+        _get_cached_strategy,
+        add_pending_orders,
+    ):
+        add_pending_orders.return_value = {"saved": 1, "duplicates": 0}
+
+        response = self.client.post(
+            "/orders/save",
+            data={
+                "order_count": "1",
+                "symbol_0": "BTCUSDT",
+                "side_0": "BUY",
+                "order_type_0": "LIMIT",
+                "order_value_0": "600",
+                "order_price_0": "60000",
+                "order_quantity_0": "0.01",
+                "created_at_0": "2026-08-03T12:00",
+                "order_id_0": "fixture-order",
+            },
+            headers=self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("saved=1", response.location)
+        add_pending_orders.assert_called_once()
+        saved_orders = add_pending_orders.call_args.args[0]
+        self.assertEqual(saved_orders[0]["order_id"], "fixture-order")
+        self.assertIsNone(
+            add_pending_orders.call_args.kwargs["strategy_levels"]
+        )
+
+    @patch("web.app.get_pending_orders")
+    @patch(
+        "web.app._get_cached_strategy",
+        side_effect=RuntimeError("market unavailable"),
+    )
+    @patch("web.app.has_unassigned_orders", return_value=True)
+    def test_orders_remain_visible_when_strategy_analysis_fails(
+        self,
+        _has_unassigned_orders,
+        _get_cached_strategy,
+        get_pending_orders,
+    ):
+        get_pending_orders.return_value = []
+
+        response = self.client.get(
+            "/orders?symbol=BTCUSDT",
+            headers=self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        get_pending_orders.assert_called_once_with(symbol="BTCUSDT")
+
     @patch("web.app.get_ticker")
     def test_alpha_rescue_api_is_read_only_and_uses_live_cross_price(
         self,
