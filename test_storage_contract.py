@@ -1,6 +1,7 @@
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 import sys
 
@@ -127,6 +128,41 @@ class StorageSchemaContractTest(unittest.TestCase):
             table_columns(self.telegram_database, "bybit_executions")[-2:],
             ["strategy_key", "strategy_confidence"],
         )
+
+    def test_imported_open_order_reopens_cancelled_order_with_same_id(self):
+        database.init_database()
+        order = {
+            "order_id": "28967936",
+            "symbol": "BTCUSDT",
+            "side": "BUY",
+            "order_type": "LIMIT",
+            "order_value": 342.30,
+            "order_price": 62429,
+            "order_quantity": 0.005483,
+            "created_at": "2026-08-03T13:50:14",
+        }
+
+        with patch.dict("os.environ", {"TELEGRAM_USER_ID": "1"}):
+            first = dashboard_trades.add_pending_orders([order])
+            with sqlite3.connect(self.telegram_database) as connection:
+                connection.execute(
+                    "UPDATE pending_orders SET status = 'CANCELLED'"
+                )
+            order["order_value"] = 343.00
+            second = dashboard_trades.add_pending_orders([order])
+
+        with sqlite3.connect(self.telegram_database) as connection:
+            restored = connection.execute(
+                """
+                SELECT status, order_value
+                FROM pending_orders
+                WHERE order_id = '28967936'
+                """
+            ).fetchone()
+
+        self.assertEqual(first, {"saved": 1, "duplicates": 0})
+        self.assertEqual(second, {"saved": 1, "duplicates": 0})
+        self.assertEqual(restored, ("OPEN", 343.0))
 
     def test_dashboard_history_schema_and_snapshot_throttle_are_stable(self):
         result = {

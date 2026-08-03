@@ -906,10 +906,20 @@ def add_pending_orders(orders, strategy_levels=None):
                 side,
                 strategy_levels,
             )
+            existing = None
+            if order_id:
+                existing = connection.execute(
+                    """
+                    SELECT status
+                    FROM pending_orders
+                    WHERE telegram_user_id = ? AND order_id = ?
+                    """,
+                    (telegram_user_id, order_id),
+                ).fetchone()
 
-            cursor = connection.execute(
+            connection.execute(
                 """
-                INSERT OR IGNORE INTO pending_orders (
+                INSERT INTO pending_orders (
                     telegram_user_id,
                     order_id,
                     symbol,
@@ -926,6 +936,20 @@ def add_pending_orders(orders, strategy_levels=None):
                     strategy_reason
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'OPEN', ?, ?, ?, ?)
+                ON CONFLICT(telegram_user_id, order_id)
+                DO UPDATE SET
+                    symbol = excluded.symbol,
+                    side = excluded.side,
+                    order_type = excluded.order_type,
+                    order_value = excluded.order_value,
+                    order_price = excluded.order_price,
+                    order_quantity = excluded.order_quantity,
+                    created_at = excluded.created_at,
+                    status = 'OPEN',
+                    updated_at = excluded.updated_at,
+                    strategy_key = excluded.strategy_key,
+                    strategy_confidence = excluded.strategy_confidence,
+                    strategy_reason = excluded.strategy_reason
                 """,
                 (
                     telegram_user_id,
@@ -946,10 +970,10 @@ def add_pending_orders(orders, strategy_levels=None):
                 ),
             )
 
-            if cursor.rowcount:
-                saved += 1
-            else:
+            if existing and existing["status"] == "OPEN":
                 duplicates += 1
+            else:
+                saved += 1
 
     return {"saved": saved, "duplicates": duplicates}
 
