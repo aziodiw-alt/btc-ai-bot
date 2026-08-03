@@ -134,3 +134,38 @@ def generate_report(result, whale_context=None, news_context=None):
     )
 
     return response.output_text
+
+
+def build_zone_commentary_prompt(result):
+    zone_1 = result.get("buy_zone_1", [])
+    zone_2 = result.get("buy_zone_2", [])
+    return f"""
+Ты кратко объясняешь ценовые зоны автоматической стратегии {result.get('strategy_name', 'Swing')}.
+Не изменяй уровни, не придумывай новые цены, не обещай прибыль и не давай команду немедленно покупать.
+
+Пара: {result.get('display_symbol', 'BTC/USDT')}
+Текущая цена: {result.get('price')}
+Поддержка / Buy Zone 1: {zone_1}
+Buy Zone 2: {zone_2}
+Сопротивление: {result.get('resistance')}
+Stop Loss: {result.get('stop_loss')}
+TP1: {result.get('take_profit_1')}
+TP2: {result.get('take_profit_2')}
+Рыночный режим: {result.get('market_mode_label', result.get('market_mode'))}
+Решение стратегии: {result.get('decision')}
+
+Напиши простым русским языком не более 120 слов и строго в четырёх коротких разделах:
+1. Где цена сейчас — относительно поддержки и сопротивления.
+2. Обычный откат — что означает приход в Buy Zone 1.
+3. Глубокий откат — что означает Buy Zone 2 и где сценарий ломается.
+4. Сценарий роста — что важно при подходе к сопротивлению и целям.
+Подчеркни, что зоны являются диапазонами, а не точными точками разворота.
+""".strip()
+
+
+def generate_zone_commentary(result):
+    response = client.responses.create(
+        model="gpt-5-mini",
+        input=build_zone_commentary_prompt(result),
+    )
+    return response.output_text

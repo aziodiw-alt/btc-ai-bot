@@ -672,6 +672,60 @@
         });
     }
 
+    const zoneAiButton = document.getElementById(
+        "generate-zone-commentary"
+    );
+    const zoneCommentaryText = document.getElementById(
+        "zone-commentary-text"
+    );
+
+    if (zoneAiButton && zoneCommentaryText) {
+        zoneAiButton.addEventListener("click", async () => {
+            zoneAiButton.disabled = true;
+            zoneAiButton.textContent = "AI анализирует…";
+            zoneCommentaryText.className = "ai-report-placeholder";
+            zoneCommentaryText.textContent = (
+                "Сопоставляем цену с поддержкой, зонами отката и сопротивлением…"
+            );
+
+            try {
+                const zoneAiUrl = new URL(
+                    zoneAiButton.dataset.apiUrl,
+                    window.location.origin
+                );
+                zoneAiUrl.searchParams.set(
+                    "strategy",
+                    zoneAiButton.dataset.strategy || "swing"
+                );
+                zoneAiUrl.searchParams.set("symbol", activeSymbol);
+                zoneAiUrl.searchParams.set("exchange", activeExchange);
+                const response = await fetch(zoneAiUrl, {
+                    method: "POST",
+                    headers: { Accept: "application/json" }
+                });
+                const payload = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(payload.error || `HTTP ${response.status}`);
+                }
+
+                zoneCommentaryText.className = "ai-report-text";
+                zoneCommentaryText.textContent = payload.commentary;
+                zoneAiButton.textContent = "Обновить описание";
+            } catch (error) {
+                console.error(error);
+                zoneCommentaryText.className = "ai-report-error";
+                zoneCommentaryText.textContent = (
+                    "Не удалось получить AI-анализ зон. Проверьте OPENAI_API_KEY "
+                    + "и повторите попытку."
+                );
+                zoneAiButton.textContent = "Повторить";
+            } finally {
+                zoneAiButton.disabled = false;
+            }
+        });
+    }
+
     const whalePanel = document.getElementById("whale-alert-panel");
     const whaleSummary = document.getElementById("whale-summary");
     const whaleEvents = document.getElementById("whale-events");

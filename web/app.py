@@ -785,5 +785,23 @@ def ai_report():
         return jsonify({"error": str(exc)}), 500
 
 
+@app.route("/api/ai-zone-commentary", methods=["POST"])
+def ai_zone_commentary():
+    try:
+        symbol = _normalize_symbol(request.args.get("symbol", "BTCUSDT"))
+        strategy_name = _normalize_strategy_name(
+            request.args.get("strategy", "swing")
+        )
+        exchange = _normalize_exchange(
+            request.args.get("exchange", "bybit")
+        )
+        result = _get_cached_strategy(strategy_name, symbol, exchange)
+        from ai_report import generate_zone_commentary
+
+        return jsonify({"commentary": generate_zone_commentary(result)})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True)

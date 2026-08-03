@@ -352,6 +352,34 @@
                             </span>
                         </span>
                     </div>
+
+                    <div class="zone-ai-panel">
+                        <div class="zone-ai-heading">
+                            <div>
+                                <h3>AI-анализ зон и отката</h3>
+                                <p>
+                                    Краткое объяснение поддержки, двух зон покупки,
+                                    сопротивления и сценария отмены.
+                                </p>
+                            </div>
+                            <button
+                                id="generate-zone-commentary"
+                                class="ai-button zone-ai-button"
+                                type="button"
+                                data-api-url="{{ url_for('ai_zone_commentary') }}"
+                                data-strategy="{{ active_strategy }}"
+                            >
+                                Объяснить зоны
+                            </button>
+                        </div>
+                        <div
+                            id="zone-commentary-text"
+                            class="ai-report-placeholder"
+                        >
+                            Нажмите кнопку, чтобы AI объяснил возможный обычный
+                            и глубокий откат по текущим уровням графика.
+                        </div>
+                    </div>
                 </div>
 
                 <div
