@@ -1,9 +1,7 @@
 import os
 import sys
-import threading
 import time
 from hmac import compare_digest
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -42,6 +40,18 @@ from dashboard_trades import (
 from order_parser import parse_orders
 from whale_alert import get_whale_context
 from crypto_news import get_news_context
+from btc_terminal.core.constants import (
+    CANDLE_CACHE_TTL_SECONDS,
+    STRATEGY_CACHE_TTL_SECONDS,
+)
+from btc_terminal.application.selection import (
+    normalize_exchange,
+    normalize_strategy_name,
+    normalize_symbol,
+)
+from btc_terminal.application.analysis import AnalysisService
+from btc_terminal.application.reports import AIReportService
+from btc_terminal.application.trades import summarize_open_orders
 
 
 app = Flask(__name__)
@@ -134,18 +144,22 @@ def local_datetime(value):
     except (TypeError, ValueError):
         return str(value).replace("T", " ")
 
-STRATEGY_CACHE_TTL = 60
-CANDLE_CACHE_TTL = 15
+STRATEGY_CACHE_TTL = STRATEGY_CACHE_TTL_SECONDS
+CANDLE_CACHE_TTL = CANDLE_CACHE_TTL_SECONDS
 
-_strategy_cache = {}
 _candle_cache = {}
-_cache_lock = threading.Lock()
-_ai_cache = {
-    "signature": None,
-    "created_at": 0.0,
-    "value": None,
-}
-_ai_cache_lock = threading.Lock()
+_analysis_service = AnalysisService(
+    analyze_strategy,
+    analyze_fast_strategy,
+    save_snapshot_if_due,
+    cache_ttl=STRATEGY_CACHE_TTL,
+)
+_strategy_cache = _analysis_service.cache
+_cache_lock = _analysis_service.lock
+def _load_report_generator():
+    from ai_report import generate_report
+
+    return generate_report
 
 
 def _unix_seconds(value):
@@ -161,17 +175,15 @@ def _unix_seconds(value):
 
 
 def _normalize_strategy_name(value):
-    return "fast" if str(value).lower() == "fast" else "swing"
+    return normalize_strategy_name(value)
 
 
 def _normalize_symbol(value):
-    normalized = str(value or "BTCUSDT").replace("/", "").upper()
-    return normalized if normalized in SUPPORTED_SYMBOLS else "BTCUSDT"
+    return normalize_symbol(value)
 
 
 def _normalize_exchange(value):
-    normalized = str(value or "bybit").strip().lower()
-    return normalized if normalized in {"bybit", "okx"} else "bybit"
+    return normalize_exchange(value)
 
 
 def _get_cached_strategy(
@@ -179,44 +191,17 @@ def _get_cached_strategy(
     symbol="BTCUSDT",
     exchange="bybit",
 ):
-    strategy_name = _normalize_strategy_name(strategy_name)
-    symbol = _normalize_symbol(symbol)
-    exchange = _normalize_exchange(exchange)
-    cache_key = (exchange, symbol, strategy_name)
-    now = time.monotonic()
+    return _analysis_service.analyze(strategy_name, symbol, exchange)
 
-    with _cache_lock:
-        cached = _strategy_cache.get(cache_key, {})
-        cached_value = cached.get("value")
-        cache_age = now - cached.get("created_at", 0)
 
-        if cached_value is not None and cache_age < STRATEGY_CACHE_TTL:
-            return cached_value
-
-        if strategy_name == "fast":
-            result = analyze_fast_strategy(symbol, exchange=exchange)
-        else:
-            result = analyze_strategy(symbol, exchange=exchange)
-            result.setdefault("strategy_key", "swing")
-            result.setdefault("strategy_name", "Swing")
-            result.setdefault(
-                "strategy_description",
-                "Спокойные сделки · 1D + 4H",
-            )
-            result.setdefault("trend_max", 40)
-            result.setdefault("entry_max", 20)
-            result.setdefault("indicators_max", 10)
-            result.setdefault("rsi_max", 5)
-            result.setdefault("macd_max", 5)
-            result.setdefault("sentiment_max", 30)
-            result.setdefault("rsi_label", "RSI 4H")
-
-        save_snapshot_if_due(result)
-        _strategy_cache[cache_key] = {
-            "value": result,
-            "created_at": time.monotonic(),
-        }
-        return result
+_ai_report_service = AIReportService(
+    _get_cached_strategy,
+    get_whale_context,
+    get_news_context,
+    _load_report_generator,
+)
+_ai_cache = _ai_report_service.cache
+_ai_cache_lock = _ai_report_service.lock
 
 
 def _get_cached_candles(
@@ -372,37 +357,13 @@ def home():
             }
             classify_unassigned_orders(strategy_levels, symbol)
         trades_data = get_trades(current_price, symbol=symbol)
-        open_orders = [
-            order
-            for order in get_pending_orders(
-                current_price,
-                symbol=symbol,
-            )
-            if order["status"] == "OPEN"
-        ]
-        expected_profit = sum(
-            float(order["estimated_profit_usdt"])
-            for order in open_orders
-            if order["estimated_profit_usdt"] is not None
-        )
-        expected_cost = sum(
-            float(order["estimated_cost_usdt"])
-            for order in open_orders
-            if order["estimated_cost_usdt"] is not None
+        open_orders, open_order_summary = summarize_open_orders(
+            get_pending_orders(current_price, symbol=symbol)
         )
         sell_quantity = sum(
             float(order["order_quantity"])
             for order in open_orders
             if order["side"] == "SELL"
-        )
-        matched_sell_quantity = sum(
-            float(order["matched_quantity"])
-            for order in open_orders
-            if order["side"] == "SELL"
-        )
-        unmatched_sell_quantity = max(
-            sell_quantity - matched_sell_quantity,
-            0,
         )
         if active_exchange == "bybit":
             sell_advice = calculate_sell_advice(
@@ -411,47 +372,6 @@ def home():
                 pending_sell_quantity=sell_quantity,
                 quote_currency="USDT",
             )
-        open_order_summary = {
-            "count": len(open_orders),
-            "buy_count": sum(
-                order["side"] == "BUY" for order in open_orders
-            ),
-            "sell_count": sum(
-                order["side"] == "SELL" for order in open_orders
-            ),
-            "buy_value": sum(
-                float(order["order_value"])
-                for order in open_orders
-                if order["side"] == "BUY"
-            ),
-            "sell_value": sum(
-                float(order["order_value"])
-                for order in open_orders
-                if order["side"] == "SELL"
-            ),
-            "expected_profit": expected_profit,
-            "expected_profit_pct": (
-                expected_profit / expected_cost * 100
-                if expected_cost > 0
-                else None
-            ),
-            "profit_coverage_pct": (
-                matched_sell_quantity / sell_quantity * 100
-                if sell_quantity > 0
-                else None
-            ),
-            "profit_is_complete": (
-                sell_quantity > 0
-                and unmatched_sell_quantity <= 1e-12
-            ),
-            "matched_sell_quantity": matched_sell_quantity,
-            "unmatched_sell_quantity": unmatched_sell_quantity,
-            "calculated_sell_count": sum(
-                order["estimated_profit_usdt"] is not None
-                for order in open_orders
-                if order["side"] == "SELL"
-            ),
-        }
         trades_data["stats"]["open_count"] = len(open_orders)
     except Exception as exc:
         trade_data_error = str(exc)
@@ -797,66 +717,7 @@ def ai_report():
         strategy_name = _normalize_strategy_name(
             request.args.get("strategy", "swing")
         )
-        result = _get_cached_strategy(strategy_name, symbol)
-
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            whale_future = executor.submit(get_whale_context)
-            news_future = executor.submit(get_news_context)
-            whale_context = whale_future.result()
-            news_context = news_future.result()
-
-        signature = (
-            strategy_name,
-            symbol,
-            result.get("price"),
-            result.get("total_score"),
-            result.get("grade"),
-            result.get("decision"),
-            whale_context.get("score"),
-            tuple(
-                event.get("url")
-                for event in whale_context.get("events", [])[:3]
-            ),
-            news_context.get("score"),
-            tuple(
-                article.get("url")
-                for article in news_context.get("articles", [])[:3]
-            ),
-        )
-        now = time.monotonic()
-
-        with _ai_cache_lock:
-            if (
-                _ai_cache["value"] is not None
-                and _ai_cache["signature"] == signature
-                and now - _ai_cache["created_at"] < 600
-            ):
-                return jsonify(
-                    {
-                        "report": _ai_cache["value"],
-                        "cached": True,
-                    }
-                )
-
-        from ai_report import generate_report
-
-        report = generate_report(
-            result,
-            whale_context=whale_context,
-            news_context=news_context,
-        )
-
-        with _ai_cache_lock:
-            _ai_cache["signature"] = signature
-            _ai_cache["created_at"] = time.monotonic()
-            _ai_cache["value"] = report
-
-        return jsonify(
-            {
-                "report": report,
-                "cached": False,
-            }
-        )
+        return jsonify(_ai_report_service.generate(strategy_name, symbol))
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
 

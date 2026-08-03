@@ -18,7 +18,7 @@ from telegram.ext import (
     filters,
 )
 
-from database import (
+from btc_terminal.storage.telegram import (
     clear_bybit_executions,
     close_trade,
     get_bybit_fifo_statistics,
@@ -34,7 +34,7 @@ from market import get_ticker
 from okx_client import OkxReadOnlyClient
 from strategy import analyze_strategy
 from trade_import import import_bybit_csv
-from web.dashboard_trades import get_pending_orders, get_trades
+from btc_terminal.storage.trades import get_pending_orders, get_trades
 
 
 load_dotenv()
@@ -53,19 +53,19 @@ keyboard = ReplyKeyboardMarkup(
 )
 
 
-def format_number(value, decimals=0):
+def _legacy_format_number(value, decimals=0):
     text = f"{float(value):,.{decimals}f}"
     return text.replace(",", " ")
 
 
-def format_zone(zone):
+def _legacy_format_zone(zone):
     if isinstance(zone, (list, tuple)) and len(zone) == 2:
         low, high = sorted(zone)
         return f"{format_number(low)} – {format_number(high)}"
     return str(zone)
 
 
-def format_analysis(result):
+def _legacy_format_analysis(result):
     display_symbol = result.get("display_symbol", "BTC/USDT")
     exchange_name = (
         "OKX"
@@ -104,6 +104,13 @@ def format_analysis(result):
 
 ⚠️ Предупреждения:
 {warnings or "• Нет"}"""
+
+
+from btc_terminal.telegram.formatting import (
+    format_analysis,
+    format_number,
+    format_zone,
+)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):

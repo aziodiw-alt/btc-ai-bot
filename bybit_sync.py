@@ -8,7 +8,7 @@ import requests
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-from web.dashboard_trades import (
+from btc_terminal.storage.trades import (
     sync_bybit_executions,
     sync_pending_orders,
 )
