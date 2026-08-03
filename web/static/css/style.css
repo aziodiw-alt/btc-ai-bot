@@ -514,6 +514,48 @@ h1 {
     border-color: #f59e0b;
 }
 
+.strategy-button.strategy-alpha.is-active {
+    color: #f5f3ff;
+    background: #5b21b6;
+    border-color: #8b5cf6;
+}
+
+.alpha-plan {
+    margin-bottom: 14px;
+    padding: 14px;
+    border: 1px solid rgb(139 92 246 / 45%);
+    border-radius: 12px;
+    background: rgb(76 29 149 / 12%);
+}
+
+.alpha-plan-heading,
+.alpha-plan-price,
+.alpha-entry-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+}
+
+.alpha-plan-heading {
+    color: #c4b5fd;
+    border-bottom: 1px solid rgb(167 139 250 / 25%);
+}
+
+.alpha-plan-price span,
+.alpha-entry-row span,
+.alpha-trailing span {
+    color: #aeb8c8;
+}
+
+.alpha-trailing {
+    display: grid;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgb(167 139 250 / 25%);
+}
+
 .section-title {
     margin: 32px 0 14px;
     font-size: 20px;
@@ -1900,6 +1942,12 @@ body.is-resizing-column {
     color: #fcd34d;
     background: rgba(217, 119, 6, 0.14);
     border-color: rgba(251, 191, 36, 0.45);
+}
+
+.order-strategy-alpha {
+    color: #c4b5fd;
+    background: rgba(124, 58, 237, 0.14);
+    border-color: rgba(167, 139, 250, 0.45);
 }
 
 .order-strategy-mixed {

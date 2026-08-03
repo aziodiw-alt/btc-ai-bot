@@ -359,6 +359,16 @@ New product behavior (including Alpha, additional exchanges, different scoring,
 or a database migration) should start only after these refactoring phases and be
 reviewed separately.
 
+## Post-refactor product extension: Alpha
+
+Alpha was added after the behavior-preserving checkpoint as an isolated product
+change. It is a conservative 1D + 4H pullback profile with staggered 20/30/50
+limit entries, round-number buffers, a hard block against chasing sharp upward
+momentum, a minimum 1.5% safe target requirement, and trailing protection that
+activates only after TP1. Dashboard selection, analysis caching, history,
+strategy comparison, chart data, AI reports, and order classification recognize
+the `alpha` strategy key. Telegram remains Swing-only.
+
 ## Legacy module audit
 
 The deployment path is unambiguous: `railway.json` starts `launcher.py`, which

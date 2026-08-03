@@ -50,6 +50,7 @@ class PackageBoundaryTest(unittest.TestCase):
         legacy_market_state = importlib.import_module("market_state")
         legacy_swing = importlib.import_module("strategy")
         legacy_fast = importlib.import_module("fast_strategy")
+        legacy_alpha = importlib.import_module("alpha_strategy")
 
         public_market = importlib.import_module("btc_terminal.market.public")
         sentiment = importlib.import_module("btc_terminal.market.sentiment")
@@ -58,6 +59,7 @@ class PackageBoundaryTest(unittest.TestCase):
         market_state = importlib.import_module("btc_terminal.strategy.market_state")
         swing = importlib.import_module("btc_terminal.strategy.swing")
         fast = importlib.import_module("btc_terminal.strategy.fast")
+        alpha = importlib.import_module("btc_terminal.strategy.alpha")
 
         self.assertIs(public_market.get_ticker, legacy_market.get_ticker)
         self.assertIs(public_market.get_klines, legacy_market.get_klines)
@@ -77,6 +79,10 @@ class PackageBoundaryTest(unittest.TestCase):
         )
         self.assertIs(swing.analyze_strategy, legacy_swing.analyze_strategy)
         self.assertIs(fast.analyze_fast_strategy, legacy_fast.analyze_fast_strategy)
+        self.assertIs(
+            alpha.analyze_alpha_strategy,
+            legacy_alpha.analyze_alpha_strategy,
+        )
 
     def test_dashboard_history_legacy_import_aliases_storage_module(self):
         legacy_history = importlib.import_module("dashboard_history")

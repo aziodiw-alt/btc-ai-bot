@@ -178,6 +178,15 @@ class StorageSchemaContractTest(unittest.TestCase):
                 "FROM analysis_history"
             ).fetchone()
         self.assertEqual(stored, ("BTC/USDT", "swing", "BUY", '["reason"]'))
+        self.assertEqual(
+            [
+                item["key"]
+                for item in dashboard_history.get_strategy_comparison(
+                    "BTC/USDT"
+                )
+            ],
+            ["swing", "fast", "alpha"],
+        )
 
     def test_legacy_history_schema_is_upgraded_without_losing_rows(self):
         with sqlite3.connect(self.dashboard_database) as connection:

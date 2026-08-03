@@ -9,10 +9,10 @@ from btc_terminal.application.selection import (
 
 
 class AnalysisSelectionContractTest(unittest.TestCase):
-    def test_strategy_selection_preserves_fast_only_opt_in(self):
+    def test_strategy_selection_supports_three_explicit_profiles(self):
         self.assertEqual(normalize_strategy_name("FAST"), "fast")
         self.assertEqual(normalize_strategy_name("swing"), "swing")
-        self.assertEqual(normalize_strategy_name("alpha"), "swing")
+        self.assertEqual(normalize_strategy_name("alpha"), "alpha")
         self.assertEqual(normalize_strategy_name(None), "swing")
 
     def test_symbol_selection_preserves_current_allowlist_and_fallback(self):

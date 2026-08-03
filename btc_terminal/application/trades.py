@@ -197,7 +197,10 @@ def classify_order_strategy(order_price, side, strategy_levels):
     side = str(side).upper()
     candidates = []
     for strategy_key, result in (strategy_levels or {}).items():
-        strategy_name = "Fast" if strategy_key == "fast" else "Swing"
+        strategy_name = {
+            "fast": "Fast",
+            "alpha": "Alpha",
+        }.get(strategy_key, "Swing")
         if side == "BUY":
             for zone_key, zone_label in (
                 ("buy_zone_1", "Buy Zone 1"),

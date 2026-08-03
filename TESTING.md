@@ -42,5 +42,5 @@ Before and after every behavior-preserving refactoring phase:
 4. Keep live API checks separate from the offline result.
 # Current baseline
 
-The behavior-preserving architecture refactor baseline is **87 passing offline
+The Alpha feature baseline is **92 passing offline
 tests**, plus successful syntax compilation of the production Python modules.

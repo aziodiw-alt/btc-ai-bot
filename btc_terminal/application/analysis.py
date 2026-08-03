@@ -18,11 +18,13 @@ class AnalysisService:
         fast_analyzer,
         snapshot_callback,
         *,
+        alpha_analyzer=None,
         cache_ttl=STRATEGY_CACHE_TTL_SECONDS,
         clock=time.monotonic,
     ):
         self.swing_analyzer = swing_analyzer
         self.fast_analyzer = fast_analyzer
+        self.alpha_analyzer = alpha_analyzer
         self.snapshot_callback = snapshot_callback
         self.cache_ttl = cache_ttl
         self.clock = clock
@@ -45,6 +47,8 @@ class AnalysisService:
 
             if strategy_name == "fast":
                 result = self.fast_analyzer(symbol, exchange=exchange)
+            elif strategy_name == "alpha" and self.alpha_analyzer is not None:
+                result = self.alpha_analyzer(symbol, exchange=exchange)
             else:
                 result = self.swing_analyzer(symbol, exchange=exchange)
                 self._add_swing_defaults(result)

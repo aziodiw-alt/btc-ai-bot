@@ -9,7 +9,7 @@ unchanged.
 
 Baseline at this checkpoint:
 
-- 87 offline tests passing;
+- 92 offline tests passing;
 - production Python modules compile successfully;
 - `ARCHITECTURE.md` contains the real data flow, dependency map, responsibility
   audit, phased plan, current phase status, and legacy-module audit;
@@ -23,7 +23,8 @@ Baseline at this checkpoint:
 - `btc_terminal.market`: Bybit/OKX adapters, sentiment, ports, and compatibility
   access to current market behavior.
 - `btc_terminal.strategy`: Swing/Fast orchestration and extracted grading, risk,
-  trend, entry, momentum, indicators, levels, and market-state rules.
+  trend, entry, momentum, indicators, levels, and market-state rules, plus the
+  conservative Alpha pullback strategy.
 - `btc_terminal.application`: request selection, cached analysis orchestration,
   AI report orchestration, and pure trade/order calculations.
 - `btc_terminal.storage`: dashboard history and trade/order repositories, plus a
@@ -72,7 +73,7 @@ See `TESTING.md` for details.
 Expected result at this checkpoint:
 
 ```text
-Ran 87 tests
+Ran 92 tests
 OK
 ```
 
@@ -85,16 +86,16 @@ Production-module syntax compilation also passed with `python -m compileall`.
   `run_offline_tests.py`; moving files should be a separate mechanical change.
 - Removal of legacy root modules.
 - Database consolidation or migration.
-- New trading behavior, Alpha strategy work, scoring changes, or new exchanges.
+- Further scoring changes, additional strategies, or new exchanges.
 
-These should each be handled as separate changes with the 87-test baseline
+These should each be handled as separate changes with the 92-test baseline
 green before and after.
 
 ## Recommended next step
 
 1. Review and commit the current architecture refactor as one checkpoint.
 2. Start the next product change in a separate commit.
-3. Before editing, run the offline suite and confirm the 87-test baseline.
+3. Before editing, run the offline suite and confirm the 92-test baseline.
 
 Suggested checkpoint commit message:
 
@@ -108,7 +109,7 @@ refactor: complete behavior-preserving architecture phases 0-6
 Continue BTC AI Terminal from the architecture checkpoint. First read
 HANDOFF.md, ARCHITECTURE.md, TESTING.md, and btc_terminal/README.md. Inspect git
 status and run run_offline_tests.py before changing code. The expected baseline
-is 87 passing tests. Preserve runtime behavior and database compatibility unless
+is 92 passing tests. Preserve runtime behavior and database compatibility unless
 I explicitly request a product-logic change.
 ```
 

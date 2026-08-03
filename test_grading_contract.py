@@ -1,9 +1,20 @@
 import unittest
 
-from btc_terminal.strategy.grading import grade_fast, grade_swing
+from btc_terminal.strategy.grading import grade_alpha, grade_fast, grade_swing
 
 
 class GradingContractTest(unittest.TestCase):
+    def test_alpha_hard_blocks_override_high_score(self):
+        for overrides in (
+            {"sharp_upward_momentum": True, "trend_score": 40, "target_available": True},
+            {"sharp_upward_momentum": False, "trend_score": 24, "target_available": True},
+            {"sharp_upward_momentum": False, "trend_score": 40, "target_available": False},
+        ):
+            with self.subTest(overrides=overrides):
+                grade, decision = grade_alpha(100, **overrides)
+                self.assertEqual(grade, "SKIP")
+                self.assertIn("ALPHA WAIT", decision)
+
     def test_swing_boundaries_and_decisions(self):
         cases = (
             (85, "A+", "BUY LIMIT — хороший сигнал"),

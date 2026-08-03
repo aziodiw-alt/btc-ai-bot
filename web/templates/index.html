@@ -79,6 +79,13 @@
                     Fast
                     <small>4H + 1H · тест</small>
                 </a>
+                <a
+                    class="strategy-button strategy-alpha {{ 'is-active' if active_strategy == 'alpha' else '' }}"
+                    href="{{ url_for('home', symbol=active_symbol, strategy='alpha', exchange=active_exchange) }}"
+                >
+                    Alpha
+                    <small>1D + 4H · откат</small>
+                </a>
             </nav>
             </div>
         </div>
@@ -271,7 +278,7 @@
                                 1D
                             </button>
                             <button
-                                class="timeframe-button {{ 'is-active' if active_strategy == 'swing' else '' }}"
+                                class="timeframe-button {{ 'is-active' if active_strategy in ['swing', 'alpha'] else '' }}"
                                 type="button"
                                 data-timeframe="240"
                                 data-label="4H"
@@ -359,6 +366,35 @@
 
                 <aside class="strategy-panel">
                     <h2 class="section-title">Торговые уровни</h2>
+
+                    {% if active_strategy == "alpha" %}
+                        <div class="alpha-plan">
+                            <div class="alpha-plan-heading">
+                                <span>Alpha ждёт отката</span>
+                                <strong>{{ result["entry_status"] }}</strong>
+                            </div>
+                            <div class="alpha-plan-price">
+                                <span>Текущая цена</span>
+                                <strong>{{ "{:,.2f}".format(result["current_price"]).replace(",", " ") }}</strong>
+                            </div>
+                            <div class="alpha-plan-price">
+                                <span>Планируемая средняя</span>
+                                <strong>{{ "{:,.2f}".format(result["planned_entry"]).replace(",", " ") }}</strong>
+                            </div>
+                            {% for entry in result["entry_plan"] %}
+                                <div class="alpha-entry-row">
+                                    <span>{{ entry["label"] }}</span>
+                                    <strong>{{ entry["allocation_pct"] }}%</strong>
+                                    <span>{{ "{:,.2f}".format(entry["price"]).replace(",", " ") }}</span>
+                                </div>
+                            {% endfor %}
+                            <div class="alpha-trailing">
+                                <strong>Защита после TP1</strong>
+                                <span>Protected stop: {{ "{:,.2f}".format(result["trailing_stop"]["protected_stop"]).replace(",", " ") }}</span>
+                                <span>Trailing: {{ result["trailing_stop"]["trail_distance_pct"] }}%</span>
+                            </div>
+                        </div>
+                    {% endif %}
 
                     <div class="levels">
                         <div class="card level-card level-buy">

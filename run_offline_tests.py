@@ -7,6 +7,7 @@ import unittest
 OFFLINE_TEST_MODULES = (
     "test_strategy",
     "test_fast_strategy",
+    "test_alpha_strategy",
     "test_bot_formatting",
     "test_web_analysis_contract",
     "test_storage_contract",

@@ -18,7 +18,7 @@ class AnalysisServiceContractTest(unittest.TestCase):
             clock=lambda: next(times),
         )
 
-        first = service.analyze("alpha", "SOLUSDT", "binance")
+        first = service.analyze("unknown", "SOLUSDT", "binance")
         cached = service.analyze("swing", "BTCUSDT", "bybit")
         refreshed = service.analyze("swing", "BTCUSDT", "bybit")
 
@@ -38,6 +38,26 @@ class AnalysisServiceContractTest(unittest.TestCase):
 
         self.assertEqual(result, {"source": "fast"})
         fast.assert_called_once_with("ETHUSDT", exchange="okx")
+
+    def test_alpha_dispatch_uses_dedicated_analyzer(self):
+        swing = Mock()
+        fast = Mock()
+        alpha = Mock(return_value={"source": "alpha"})
+        snapshot = Mock()
+        service = AnalysisService(
+            swing,
+            fast,
+            snapshot,
+            alpha_analyzer=alpha,
+        )
+
+        result = service.analyze("ALPHA", "BTCUSDT", "okx")
+
+        self.assertEqual(result, {"source": "alpha"})
+        alpha.assert_called_once_with("BTCUSDT", exchange="okx")
+        swing.assert_not_called()
+        fast.assert_not_called()
+        snapshot.assert_called_once_with(result)
 
 
 if __name__ == "__main__":

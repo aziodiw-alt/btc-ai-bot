@@ -114,7 +114,7 @@ class DashboardAnalysisContractTest(unittest.TestCase):
         self.assertEqual(payload["levels"]["current_price"], 105.0)
         self.assertEqual(payload["levels"]["support_zone"], [89.0, 91.0])
         get_cached_candles.assert_called_once_with("D", "BTCUSDT", "bybit")
-        get_cached_strategy.assert_called_once_with("swing", "BTCUSDT", "bybit")
+        get_cached_strategy.assert_called_once_with("alpha", "BTCUSDT", "bybit")
 
     @patch("web.app._ai_report_service.news_loader")
     @patch("web.app._ai_report_service.whale_loader")
@@ -222,7 +222,7 @@ class DashboardAnalysisContractTest(unittest.TestCase):
 
     def test_request_values_are_normalized_to_supported_options(self):
         self.assertEqual(web_app._normalize_strategy_name("FAST"), "fast")
-        self.assertEqual(web_app._normalize_strategy_name("alpha"), "swing")
+        self.assertEqual(web_app._normalize_strategy_name("alpha"), "alpha")
         self.assertEqual(web_app._normalize_symbol("eth/usdt"), "ETHUSDT")
         self.assertEqual(web_app._normalize_symbol("SOLUSDT"), "BTCUSDT")
         self.assertEqual(web_app._normalize_exchange("OKX"), "okx")

@@ -5,7 +5,8 @@ SUPPORTED_ANALYSIS_SYMBOLS = frozenset({"BTCUSDT", "ETHUSDT"})
 
 
 def normalize_strategy_name(value):
-    return "fast" if str(value).lower() == "fast" else "swing"
+    normalized = str(value or "swing").strip().lower()
+    return normalized if normalized in {"swing", "fast", "alpha"} else "swing"
 
 
 def normalize_symbol(value):

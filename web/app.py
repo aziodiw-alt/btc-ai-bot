@@ -17,6 +17,7 @@ if BASE_DIR not in sys.path:
 from market import get_klines
 from strategy import analyze_strategy
 from fast_strategy import analyze_fast_strategy
+from alpha_strategy import analyze_alpha_strategy
 from okx_client import OkxReadOnlyClient
 from dashboard_history import (
     get_dashboard_history,
@@ -152,6 +153,7 @@ _analysis_service = AnalysisService(
     analyze_strategy,
     analyze_fast_strategy,
     save_snapshot_if_due,
+    alpha_analyzer=analyze_alpha_strategy,
     cache_ttl=STRATEGY_CACHE_TTL,
 )
 _strategy_cache = _analysis_service.cache
@@ -354,6 +356,7 @@ def home():
             strategy_levels = {
                 "swing": _get_cached_strategy("swing", symbol),
                 "fast": _get_cached_strategy("fast", symbol),
+                "alpha": _get_cached_strategy("alpha", symbol),
             }
             classify_unassigned_orders(strategy_levels, symbol)
         trades_data = get_trades(current_price, symbol=symbol)
@@ -488,6 +491,7 @@ def orders_page():
             strategy_levels = {
                 "swing": _get_cached_strategy("swing", symbol),
                 "fast": _get_cached_strategy("fast", symbol),
+                "alpha": _get_cached_strategy("alpha", symbol),
             }
             classify_unassigned_orders(strategy_levels, symbol)
         orders = get_pending_orders(symbol=symbol)
@@ -556,6 +560,7 @@ def save_orders():
         strategy_levels = {
             "swing": _get_cached_strategy("swing", symbol),
             "fast": _get_cached_strategy("fast", symbol),
+            "alpha": _get_cached_strategy("alpha", symbol),
         }
         report = add_pending_orders(
             orders,

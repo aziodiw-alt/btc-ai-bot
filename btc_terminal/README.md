@@ -62,6 +62,9 @@ namespace, the legacy root module will reverse direction and become the wrapper.
 - `strategy.swing` and `strategy.fast`: top-level coordinators moved into the
   namespace; root `strategy.py` and `fast_strategy.py` are compatibility
   wrappers used by existing Dashboard and Telegram imports.
+- `strategy.alpha`: conservative pullback-only profile with staggered
+  20/30/50 limit entries, impulse-chasing hard blocks, round-number buffers,
+  and profit-only trailing protection after TP1.
 - `application.selection`: strategy, symbol, and exchange normalization moved
   out of Flask; existing web helper names remain wrappers.
 - `application.analysis`: strategy dispatch, Swing defaults, snapshot callback,
