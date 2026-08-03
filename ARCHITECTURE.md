@@ -369,6 +369,16 @@ activates only after TP1. Dashboard selection, analysis caching, history,
 strategy comparison, chart data, AI reports, and order classification recognize
 the `alpha` strategy key. Telegram remains Swing-only.
 
+### Alpha Rescue
+
+The training chapter "Your rescue circle" is implemented separately as a
+read-only BTC↔ETH recovery calculator. It derives the live ETH/BTC cross rate
+from the selected exchange, models both conversion fees, and calculates the
+cross-price target required to return 1% more of the original base asset. It can
+also compare projected value with the user's USD cost basis. It never places
+orders and explicitly warns that increasing coin quantity does not guarantee
+USD recovery.
+
 ## Legacy module audit
 
 The deployment path is unambiguous: `railway.json` starts `launcher.py`, which

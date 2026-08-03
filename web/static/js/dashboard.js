@@ -950,6 +950,74 @@
     initializeResizableOrderColumns();
 })();
 
+(function initializeAlphaRescueCalculator() {
+    const calculator = document.getElementById("alpha-rescue-calculator");
+    const button = document.getElementById("calculate-alpha-rescue");
+    if (!calculator || !button) {
+        return;
+    }
+
+    const quantity = document.getElementById("rescue-base-quantity");
+    const averageCost = document.getElementById("rescue-average-cost");
+    const asset = document.getElementById("rescue-base-asset");
+    const status = document.getElementById("alpha-rescue-status");
+    const result = document.getElementById("alpha-rescue-result");
+
+    function number(value, digits = 8) {
+        if (value === null || value === undefined) {
+            return "—";
+        }
+        return Number(value).toLocaleString("ru-RU", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: digits
+        });
+    }
+
+    button.addEventListener("click", async () => {
+        status.textContent = "";
+        result.hidden = true;
+        const baseQuantity = Number(quantity.value);
+        if (!Number.isFinite(baseQuantity) || baseQuantity <= 0) {
+            status.textContent = "Введите количество BTC или ETH больше нуля.";
+            return;
+        }
+
+        button.disabled = true;
+        try {
+            const response = await fetch(calculator.dataset.apiUrl, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    exchange: calculator.dataset.exchange,
+                    base_asset: asset.value,
+                    base_quantity: baseQuantity,
+                    average_cost_usd: averageCost.value || null,
+                    minimum_net_gain_pct: 1.0,
+                    fee_rate: 0.001
+                })
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+                throw new Error(payload.error || "Не удалось рассчитать Rescue");
+            }
+            document.getElementById("rescue-action").textContent = payload.action;
+            document.getElementById("rescue-entry").textContent = number(payload.cross_entry_price, 8);
+            document.getElementById("rescue-exit").textContent = number(payload.cross_exit_price, 8);
+            document.getElementById("rescue-move").textContent = `${number(payload.cross_move_pct, 3)}% ${payload.required_cross_direction}`;
+            document.getElementById("rescue-after").textContent = `${number(payload.base_quantity_after, 8)} ${payload.base_asset}`;
+            document.getElementById("rescue-gain").textContent = `${number(payload.base_quantity_gain, 8)} ${payload.base_asset} (${number(payload.net_gain_pct, 3)}%)`;
+            document.getElementById("rescue-usd").textContent = `$${number(payload.projected_value_usd_at_same_price, 2)}`;
+            document.getElementById("rescue-gap").textContent = payload.projected_recovery_gap_usd === null ? "—" : `$${number(payload.projected_recovery_gap_usd, 2)}`;
+            document.getElementById("rescue-warning").textContent = payload.warning;
+            result.hidden = false;
+        } catch (error) {
+            status.textContent = error.message;
+        } finally {
+            button.disabled = false;
+        }
+    });
+})();
+
 (function initializeBalanceVisibility() {
     const toggle = document.getElementById("hide-small-balances");
     const balances = Array.from(

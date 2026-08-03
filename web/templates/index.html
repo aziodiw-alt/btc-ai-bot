@@ -394,6 +394,45 @@
                                 <span>Trailing: {{ result["trailing_stop"]["trail_distance_pct"] }}%</span>
                             </div>
                         </div>
+                        <div
+                            id="alpha-rescue-calculator"
+                            class="alpha-rescue"
+                            data-api-url="{{ url_for('alpha_rescue') }}"
+                            data-exchange="{{ active_exchange }}"
+                        >
+                            <div class="alpha-plan-heading">
+                                <span>Ваш спасательный круг</span>
+                                <strong>READ ONLY</strong>
+                            </div>
+                            <label>
+                                Спасаемый актив
+                                <select id="rescue-base-asset">
+                                    <option value="BTC" {{ 'selected' if asset_info['asset'] == 'BTC' else '' }}>BTC</option>
+                                    <option value="ETH" {{ 'selected' if asset_info['asset'] == 'ETH' else '' }}>ETH</option>
+                                </select>
+                            </label>
+                            <label>
+                                Количество монет
+                                <input id="rescue-base-quantity" type="number" min="0" step="0.00000001" placeholder="0.01">
+                            </label>
+                            <label>
+                                Средняя цена покупки, USD
+                                <input id="rescue-average-cost" type="number" min="0" step="0.01" placeholder="необязательно">
+                            </label>
+                            <button id="calculate-alpha-rescue" type="button">Рассчитать Rescue</button>
+                            <p id="alpha-rescue-status" class="alpha-rescue-status"></p>
+                            <div id="alpha-rescue-result" class="alpha-rescue-result" hidden>
+                                <div><span>Цикл</span><strong id="rescue-action"></strong></div>
+                                <div><span>Текущий ETH/BTC</span><strong id="rescue-entry"></strong></div>
+                                <div><span>Целевой ETH/BTC</span><strong id="rescue-exit"></strong></div>
+                                <div><span>Нужно движение</span><strong id="rescue-move"></strong></div>
+                                <div><span>Монет после цикла</span><strong id="rescue-after"></strong></div>
+                                <div><span>Чистый прирост</span><strong id="rescue-gain"></strong></div>
+                                <div><span>USD после цикла при той же цене</span><strong id="rescue-usd"></strong></div>
+                                <div><span>Разрыв к себестоимости</span><strong id="rescue-gap"></strong></div>
+                                <small id="rescue-warning"></small>
+                            </div>
+                        </div>
                     {% endif %}
 
                     <div class="levels">

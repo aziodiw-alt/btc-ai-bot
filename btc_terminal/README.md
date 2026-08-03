@@ -79,6 +79,9 @@ namespace, the legacy root module will reverse direction and become the wrapper.
   Order classification by Swing/Fast zones and targets now uses the same pure
   module as well. Dashboard open-order totals and profit-coverage aggregation
   are also composed there instead of inside the Flask route.
+- `application.rescue`: read-only BTC↔ETH recovery-cycle calculations with two
+  fees, a configurable minimum net coin gain, live cross-price integration, and
+  USD cost-basis comparison. No order placement is exposed.
 - `storage.history`: dashboard analysis-history SQLite implementation moved out
   of `web`; `dashboard_history` remains an exact module alias so database-path
   overrides, schema upgrades, and existing imports retain their behavior.

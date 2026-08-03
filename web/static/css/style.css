@@ -556,6 +556,71 @@ h1 {
     border-top: 1px solid rgb(167 139 250 / 25%);
 }
 
+.alpha-rescue {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 14px;
+    border: 1px solid rgb(14 165 233 / 45%);
+    border-radius: 12px;
+    background: rgb(3 105 161 / 10%);
+}
+
+.alpha-rescue label {
+    display: grid;
+    gap: 5px;
+    color: #aeb8c8;
+    font-size: 12px;
+}
+
+.alpha-rescue input,
+.alpha-rescue select,
+.alpha-rescue button {
+    width: 100%;
+    padding: 9px 10px;
+    color: #f8fafc;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 8px;
+}
+
+.alpha-rescue button {
+    color: #e0f2fe;
+    font-weight: 800;
+    background: #075985;
+    border-color: #0ea5e9;
+    cursor: pointer;
+}
+
+.alpha-rescue-status {
+    min-height: 18px;
+    margin: 0;
+    color: #fca5a5;
+    font-size: 12px;
+}
+
+.alpha-rescue-result {
+    display: grid;
+    gap: 7px;
+    padding-top: 10px;
+    border-top: 1px solid rgb(56 189 248 / 25%);
+}
+
+.alpha-rescue-result[hidden] {
+    display: none;
+}
+
+.alpha-rescue-result > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.alpha-rescue-result span,
+.alpha-rescue-result small {
+    color: #aeb8c8;
+}
+
 .section-title {
     margin: 32px 0 14px;
     font-size: 20px;

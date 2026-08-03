@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 from pathlib import Path
 import sys
 import base64
@@ -227,6 +227,39 @@ class DashboardAnalysisContractTest(unittest.TestCase):
         self.assertEqual(web_app._normalize_symbol("SOLUSDT"), "BTCUSDT")
         self.assertEqual(web_app._normalize_exchange("OKX"), "okx")
         self.assertEqual(web_app._normalize_exchange("binance"), "bybit")
+
+    @patch("web.app.get_ticker")
+    def test_alpha_rescue_api_is_read_only_and_uses_live_cross_price(
+        self,
+        get_ticker,
+    ):
+        get_ticker.side_effect = [
+            {"price": 60_000},
+            {"price": 1_800},
+        ]
+
+        response = self.client.post(
+            "/api/alpha-rescue",
+            json={
+                "exchange": "bybit",
+                "base_asset": "BTC",
+                "base_quantity": 0.01,
+                "average_cost_usd": 62_000,
+            },
+            headers=self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload["mode"], "READ_ONLY")
+        self.assertEqual(payload["pair"], "ETH/BTC")
+        self.assertAlmostEqual(payload["cross_entry_price"], 0.03)
+        self.assertAlmostEqual(payload["base_quantity_after"], 0.0101)
+        self.assertTrue(payload["usd_risk_remains"])
+        get_ticker.assert_has_calls([
+            call("BTCUSDT", exchange="bybit"),
+            call("ETHUSDT", exchange="bybit"),
+        ])
 
     @patch("web.app._analysis_service.snapshot_callback")
     @patch("web.app._analysis_service.fast_analyzer")

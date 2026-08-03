@@ -14,7 +14,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from market import get_klines
+from market import get_klines, get_ticker
 from strategy import analyze_strategy
 from fast_strategy import analyze_fast_strategy
 from alpha_strategy import analyze_alpha_strategy
@@ -53,6 +53,7 @@ from btc_terminal.application.selection import (
 from btc_terminal.application.analysis import AnalysisService
 from btc_terminal.application.reports import AIReportService
 from btc_terminal.application.trades import summarize_open_orders
+from btc_terminal.application.rescue import calculate_rescue_plan
 
 
 app = Flask(__name__)
@@ -711,6 +712,34 @@ def whale_alerts():
 @app.route("/api/crypto-news")
 def crypto_news():
     return jsonify(get_news_context())
+
+
+@app.route("/api/alpha-rescue", methods=["POST"])
+def alpha_rescue():
+    try:
+        payload = request.get_json(silent=True) or {}
+        exchange = _normalize_exchange(payload.get("exchange", "bybit"))
+        base_asset = str(payload.get("base_asset", "BTC")).upper()
+        btc_price = float(get_ticker("BTCUSDT", exchange=exchange)["price"])
+        eth_price = float(get_ticker("ETHUSDT", exchange=exchange)["price"])
+        cross_price = eth_price / btc_price
+        base_usd_price = btc_price if base_asset == "BTC" else eth_price
+        result = calculate_rescue_plan(
+            base_asset,
+            payload.get("base_quantity"),
+            cross_price,
+            cross_exit_price=payload.get("cross_exit_price"),
+            fee_rate=payload.get("fee_rate", 0.001),
+            minimum_net_gain_pct=payload.get("minimum_net_gain_pct", 1.0),
+            base_usd_price=base_usd_price,
+            average_cost_usd=payload.get("average_cost_usd"),
+        )
+        result["exchange"] = exchange
+        return jsonify(result)
+    except (TypeError, ValueError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
 
 
 @app.route("/api/ai-report", methods=["POST"])
