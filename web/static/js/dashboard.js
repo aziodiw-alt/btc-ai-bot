@@ -1151,6 +1151,70 @@
     });
 })();
 
+(function initializeAlphaAllocationCalculator() {
+    const budgetInput = document.getElementById("alpha-total-budget");
+    const rows = Array.from(
+        document.querySelectorAll(".alpha-entry-row[data-alpha-allocation]")
+    );
+
+    if (!budgetInput || rows.length === 0) {
+        return;
+    }
+
+    const storageKey = "alpha-total-budget";
+
+    function formatAmount(value) {
+        return value.toLocaleString("ru-RU", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+            useGrouping: false
+        });
+    }
+
+    function updateAllocations() {
+        const total = Number(budgetInput.value);
+        const validTotal = Number.isFinite(total) && total > 0;
+        let allocated = 0;
+
+        rows.forEach((row, index) => {
+            const target = row.querySelector(".alpha-entry-amount");
+            const copyButton = row.querySelector(".alpha-copy-button");
+            if (!target || !copyButton) {
+                return;
+            }
+
+            if (!validTotal) {
+                target.textContent = "—";
+                target.classList.remove("has-value");
+                copyButton.disabled = true;
+                return;
+            }
+
+            const percent = Number(row.dataset.alphaAllocation || 0);
+            const amount = index === rows.length - 1
+                ? Math.round((total - allocated) * 100) / 100
+                : Math.round(total * percent) / 100;
+            allocated += amount;
+            target.textContent = formatAmount(amount);
+            target.classList.add("has-value");
+            copyButton.disabled = false;
+        });
+
+        if (validTotal) {
+            localStorage.setItem(storageKey, String(total));
+        } else {
+            localStorage.removeItem(storageKey);
+        }
+    }
+
+    const savedBudget = localStorage.getItem(storageKey);
+    if (savedBudget) {
+        budgetInput.value = savedBudget;
+    }
+    budgetInput.addEventListener("input", updateAllocations);
+    updateAllocations();
+})();
+
 (function initializeProfitCalculator() {
     const calculator = document.getElementById("profit-calculator");
     const input = document.getElementById("profit-base-price");
