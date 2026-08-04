@@ -396,6 +396,28 @@ def home():
         except Exception as exc:
             trade_data_error = str(exc)
 
+    if active_exchange == "okx":
+        try:
+            manual_bybit_wallet = get_manual_wallet()
+            manual_prices = {}
+            for wallet_asset in ("BTC", "ETH"):
+                if float(manual_bybit_wallet.get(wallet_asset.lower()) or 0) > 0:
+                    try:
+                        ticker = get_ticker(f"{wallet_asset}USDT", "bybit")
+                        manual_prices[wallet_asset] = float(ticker["price"])
+                    except Exception:
+                        pass
+            manual_bybit_portfolio = _build_manual_wallet_portfolio(
+                manual_bybit_wallet, manual_prices
+            )
+        except Exception:
+            pass
+    elif okx_account is None:
+        try:
+            okx_account = OkxReadOnlyClient().connection_status()
+        except Exception:
+            pass
+
     try:
         current_price = result["price"] if result else None
         if has_unassigned_orders(symbol):

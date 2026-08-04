@@ -24,6 +24,22 @@
                     <p class="strategy-description">
                         {{ result.get("strategy_description", "") if result else "" }}
                     </p>
+                    <div class="global-balance-summary" aria-label="Общий баланс бирж">
+                        <span class="global-balance global-balance-okx">
+                            <strong>OKX</strong>
+                            <em>
+                                {% if okx_account and okx_account["connected"] %}
+                                    ≈ {{ "{:,.2f}".format(okx_account["total_usd"]) }} USD
+                                {% else %}
+                                    недоступен
+                                {% endif %}
+                            </em>
+                        </span>
+                        <span class="global-balance global-balance-bybit">
+                            <strong>Bybit</strong>
+                            <em>≈ {{ "{:,.2f}".format(manual_bybit_portfolio["total_usdt"]) }} USDT</em>
+                        </span>
+                    </div>
                 </div>
             </div>
 
