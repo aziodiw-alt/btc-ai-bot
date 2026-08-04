@@ -1178,7 +1178,9 @@
 
         rows.forEach((row, index) => {
             const target = row.querySelector(".alpha-entry-amount");
-            const copyButton = row.querySelector(".alpha-copy-button");
+            const copyButton = row.querySelector(
+                ".alpha-amount-copy-button"
+            );
             if (!target || !copyButton) {
                 return;
             }
