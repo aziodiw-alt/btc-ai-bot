@@ -15,6 +15,17 @@
 .paper-start-form input { width: 100%; margin-top: 6px; }
 .paper-stop { margin-top: 12px; background: #b83244; }
 @media (max-width: 900px) { .paper-metrics { grid-template-columns: repeat(2, 1fr); } .paper-start-form { flex-direction: column; align-items: stretch; } }
+.scalp-panel { margin-top: 16px; }
+.scalp-launch-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 16px 0; }
+.scalp-launch-grid form, .scalp-account { background: #10182a; border: 1px solid #34415b; border-radius: 12px; padding: 14px; }
+.scalp-launch-grid h3, .scalp-account h3 { margin: 0 0 7px; }
+.scalp-launch-grid p { min-height: 38px; color: #9fb3d8; }
+.scalp-launch-grid input { width: 100%; margin-bottom: 8px; }
+.scalp-aggressive { border-color: #b4536a !important; }
+.scalp-account { margin-top: 12px; }
+.scalp-account.is-active { border-color: #36b88a; }
+.scalp-account details { margin-top: 12px; }
+@media (max-width: 700px) { .scalp-launch-grid { grid-template-columns: 1fr; } }
 
 body {
     margin: 0;
