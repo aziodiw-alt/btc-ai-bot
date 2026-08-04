@@ -149,9 +149,74 @@
                     </div>
                 {% endif %}
             {% else %}
-                <p class="exchange-account-note">
-                    Анализ рынка и текущая история Bybit остаются без изменений.
-                </p>
+                <div id="bybit-wallet" class="manual-wallet-area">
+                    <div class="manual-wallet-heading">
+                        <div>
+                            <strong>Мой кошелёк Bybit</strong>
+                            <span>Ручной снимок · без API</span>
+                        </div>
+                        {% if manual_bybit_wallet["updated_at"] %}
+                            <small>
+                                Обновлено:
+                                {{ manual_bybit_wallet["updated_at"]|local_datetime }}
+                            </small>
+                        {% endif %}
+                    </div>
+                    {% if wallet_saved %}
+                        <div class="form-message form-success">
+                            Баланс Bybit сохранён.
+                        </div>
+                    {% endif %}
+                    {% if wallet_error %}
+                        <div class="form-message form-error">{{ wallet_error }}</div>
+                    {% endif %}
+                    <form
+                        class="manual-wallet-form"
+                        method="post"
+                        action="{{ url_for('update_bybit_wallet') }}"
+                    >
+                        <input type="hidden" name="symbol" value="{{ active_symbol }}">
+                        <input type="hidden" name="strategy" value="{{ active_strategy }}">
+                        <label>
+                            BTC
+                            <input
+                                name="btc"
+                                type="number"
+                                min="0"
+                                step="0.00000001"
+                                value="{{ manual_bybit_wallet['btc'] }}"
+                                required
+                            >
+                        </label>
+                        <label>
+                            ETH
+                            <input
+                                name="eth"
+                                type="number"
+                                min="0"
+                                step="0.00000001"
+                                value="{{ manual_bybit_wallet['eth'] }}"
+                                required
+                            >
+                        </label>
+                        <label>
+                            USDT
+                            <input
+                                name="usdt"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value="{{ manual_bybit_wallet['usdt'] }}"
+                                required
+                            >
+                        </label>
+                        <button type="submit">Сохранить баланс</button>
+                    </form>
+                    <p class="manual-wallet-note">
+                        Эти значения используются только Dashboard и Telegram-ботом.
+                        Обновляйте их после исполнения или отмены ордеров.
+                    </p>
+                </div>
             {% endif %}
         </section>
 

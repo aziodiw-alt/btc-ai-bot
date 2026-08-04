@@ -260,6 +260,27 @@ class DashboardAnalysisContractTest(unittest.TestCase):
         self.assertEqual(web_app._normalize_exchange("OKX"), "okx")
         self.assertEqual(web_app._normalize_exchange("binance"), "bybit")
 
+    @patch("web.app.save_manual_wallet")
+    def test_manual_bybit_wallet_update_redirects_to_wallet(self, save_wallet):
+        response = self.client.post(
+            "/wallet/bybit",
+            data={
+                "btc": "0.01",
+                "eth": "0.5",
+                "usdt": "100",
+                "symbol": "BTCUSDT",
+                "strategy": "alpha",
+            },
+            headers=self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("wallet_saved=1", response.location)
+        self.assertTrue(response.location.endswith("#bybit-wallet"))
+        save_wallet.assert_called_once_with(
+            btc="0.01", eth="0.5", usdt="100"
+        )
+
     @patch("web.app.add_pending_orders")
     @patch(
         "web.app._get_cached_strategy",

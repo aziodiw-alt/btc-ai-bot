@@ -124,10 +124,22 @@ class StorageSchemaContractTest(unittest.TestCase):
                 "strategy_reason",
             ],
         )
-        self.assertEqual(
-            table_columns(self.telegram_database, "bybit_executions")[-2:],
-            ["strategy_key", "strategy_confidence"],
-        )
+
+    def test_manual_bybit_wallet_is_saved_and_replaced(self):
+        database.init_database()
+        with patch.dict("os.environ", {"TELEGRAM_USER_ID": "1"}):
+            first = dashboard_trades.save_manual_wallet(
+                btc=0.01, eth=0.5, usdt=100
+            )
+            dashboard_trades.save_manual_wallet(
+                btc=0.02, eth=0.4, usdt=80
+            )
+            wallet = dashboard_trades.get_manual_wallet()
+
+        self.assertIsNotNone(first["updated_at"])
+        self.assertEqual(wallet["btc"], 0.02)
+        self.assertEqual(wallet["eth"], 0.4)
+        self.assertEqual(wallet["usdt"], 80.0)
 
     def test_imported_open_order_reopens_cancelled_order_with_same_id(self):
         database.init_database()

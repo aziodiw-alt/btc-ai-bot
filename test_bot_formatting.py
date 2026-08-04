@@ -1,7 +1,12 @@
 import unittest
 
 import bot
-from bot import format_analysis, format_number, format_zone
+from bot import (
+    format_analysis,
+    format_manual_wallet,
+    format_number,
+    format_zone,
+)
 
 
 class TelegramFormattingContractTest(unittest.TestCase):
@@ -55,6 +60,21 @@ class TelegramFormattingContractTest(unittest.TestCase):
         ):
             with self.subTest(expected_text=expected_text):
                 self.assertIn(expected_text, message)
+
+    def test_manual_wallet_message_is_explicitly_not_live(self):
+        message = format_manual_wallet(
+            {
+                "btc": 0.01,
+                "eth": 0.5,
+                "usdt": 100,
+                "updated_at": "2026-08-04T10:00:00+00:00",
+            }
+        )
+
+        self.assertIn("0.01000000", message)
+        self.assertIn("0.50000000", message)
+        self.assertIn("100.00", message)
+        self.assertIn("не онлайн-баланс", message)
 
 
 if __name__ == "__main__":

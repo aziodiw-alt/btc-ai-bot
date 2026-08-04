@@ -305,6 +305,17 @@ def _connect():
         )
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS manual_wallet_balances (
+            telegram_user_id INTEGER PRIMARY KEY,
+            btc REAL NOT NULL DEFAULT 0,
+            eth REAL NOT NULL DEFAULT 0,
+            usdt REAL NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
     columns = {
         row["name"]
         for row in connection.execute(
@@ -346,6 +357,57 @@ def _connect():
                 )
     _repair_pending_order_values(connection)
     return connection
+
+
+def save_manual_wallet(btc=0, eth=0, usdt=0):
+    balances = {
+        "btc": float(btc or 0),
+        "eth": float(eth or 0),
+        "usdt": float(usdt or 0),
+    }
+    if any(value < 0 for value in balances.values()):
+        raise ValueError("Баланс не может быть отрицательным.")
+
+    updated_at = datetime.now(timezone.utc).isoformat()
+    with _connect() as connection:
+        telegram_user_id = _resolve_user_id(connection)
+        connection.execute(
+            """
+            INSERT INTO manual_wallet_balances (
+                telegram_user_id, btc, eth, usdt, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(telegram_user_id) DO UPDATE SET
+                btc = excluded.btc,
+                eth = excluded.eth,
+                usdt = excluded.usdt,
+                updated_at = excluded.updated_at
+            """,
+            (
+                telegram_user_id,
+                balances["btc"],
+                balances["eth"],
+                balances["usdt"],
+                updated_at,
+            ),
+        )
+    return {**balances, "updated_at": updated_at}
+
+
+def get_manual_wallet():
+    with _connect() as connection:
+        telegram_user_id = _resolve_user_id(connection)
+        row = connection.execute(
+            """
+            SELECT btc, eth, usdt, updated_at
+            FROM manual_wallet_balances
+            WHERE telegram_user_id = ?
+            """,
+            (telegram_user_id,),
+        ).fetchone()
+    if row is None:
+        return {"btc": 0.0, "eth": 0.0, "usdt": 0.0, "updated_at": None}
+    return dict(row)
 
 
 def _repair_pending_order_values(connection):

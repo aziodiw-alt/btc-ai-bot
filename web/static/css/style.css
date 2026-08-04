@@ -442,6 +442,76 @@ h1 {
     font-size: 12px;
 }
 
+.manual-wallet-area {
+    display: grid;
+    gap: 12px;
+}
+
+.manual-wallet-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.manual-wallet-heading > div {
+    display: grid;
+    gap: 3px;
+}
+
+.manual-wallet-heading span,
+.manual-wallet-heading small,
+.manual-wallet-note {
+    color: #94a3b8;
+}
+
+.manual-wallet-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(110px, 1fr)) auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.manual-wallet-form label {
+    display: grid;
+    gap: 5px;
+    color: #aeb8c8;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.manual-wallet-form input,
+.manual-wallet-form button {
+    min-height: 39px;
+    padding: 8px 10px;
+    border-radius: 8px;
+}
+
+.manual-wallet-form input {
+    color: #f8fafc;
+    background: #111827;
+    border: 1px solid #475569;
+}
+
+.manual-wallet-form button {
+    color: #eff6ff;
+    font-weight: 700;
+    cursor: pointer;
+    background: #2563eb;
+    border: 1px solid #3b82f6;
+}
+
+.manual-wallet-note {
+    margin: 0;
+    font-size: 12px;
+}
+
+@media (max-width: 720px) {
+    .manual-wallet-form {
+        grid-template-columns: 1fr;
+    }
+}
+
 .asset-switcher {
     display: inline-flex;
     gap: 5px;

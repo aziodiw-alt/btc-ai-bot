@@ -34,7 +34,11 @@ from market import get_ticker
 from okx_client import OkxReadOnlyClient
 from strategy import analyze_strategy
 from trade_import import import_bybit_csv
-from btc_terminal.storage.trades import get_pending_orders, get_trades
+from btc_terminal.storage.trades import (
+    get_manual_wallet,
+    get_pending_orders,
+    get_trades,
+)
 
 
 load_dotenv()
@@ -47,6 +51,7 @@ keyboard = ReplyKeyboardMarkup(
         ["🏦 Bybit", "🏦 OKX"],
         ["📋 Открытые ордера", "📈 Статистика"],
         ["🌐 Открыть Dashboard"],
+        ["💼 Кошелёк Bybit"],
         ["🔔 Автосигналы ВКЛ/ВЫКЛ"],
     ],
     resize_keyboard=True,
@@ -391,6 +396,27 @@ async def show_dashboard_link(update: Update):
     await update.message.reply_text(
         "Нажми кнопку ниже, чтобы открыть личный кабинет:",
         reply_markup=link_keyboard,
+    )
+
+
+def format_manual_wallet(wallet):
+    updated_at = wallet.get("updated_at") or "ещё не сохранён"
+    return f"""💼 КОШЕЛЁК BYBIT · РУЧНОЙ
+
+BTC: {float(wallet.get('btc') or 0):.8f}
+ETH: {float(wallet.get('eth') or 0):.8f}
+USDT: {float(wallet.get('usdt') or 0):.2f}
+
+Обновлено: {updated_at}
+
+ℹ️ Это последний снимок из Dashboard, а не онлайн-баланс биржи."""
+
+
+async def show_manual_bybit_wallet(update: Update):
+    wallet = await asyncio.to_thread(get_manual_wallet)
+    await update.message.reply_text(
+        format_manual_wallet(wallet),
+        reply_markup=keyboard,
     )
 
 
@@ -815,6 +841,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_dashboard_statistics(update, exchange)
         elif "открыть dashboard" in normalized:
             await show_dashboard_link(update)
+        elif "кошелёк bybit" in normalized:
+            await show_manual_bybit_wallet(update)
         elif "автосигналы" in normalized:
             await toggle_auto_signals(update, context)
         else:

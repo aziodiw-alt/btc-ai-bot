@@ -34,9 +34,11 @@ from dashboard_trades import (
     classify_unassigned_orders,
     fill_pending_order,
     get_pending_orders,
+    get_manual_wallet,
     get_trades,
     has_unassigned_orders,
     import_bybit_csv,
+    save_manual_wallet,
 )
 from order_parser import parse_orders
 from whale_alert import get_whale_context
@@ -313,6 +315,12 @@ def home():
     okx_account_error = None
     okx_open_orders = []
     okx_trade_history = []
+    manual_bybit_wallet = {
+        "btc": 0.0,
+        "eth": 0.0,
+        "usdt": 0.0,
+        "updated_at": None,
+    }
     sell_advice = {
         "available": False,
         "reason": "Нет данных для расчёта.",
@@ -350,6 +358,11 @@ def home():
             )
         except Exception as exc:
             okx_account_error = str(exc)
+    else:
+        try:
+            manual_bybit_wallet = get_manual_wallet()
+        except Exception as exc:
+            trade_data_error = str(exc)
 
     try:
         current_price = result["price"] if result else None
@@ -429,8 +442,42 @@ def home():
         okx_account_error=okx_account_error,
         okx_open_orders=okx_open_orders,
         okx_trade_history=okx_trade_history,
+        manual_bybit_wallet=manual_bybit_wallet,
+        wallet_saved=request.args.get("wallet_saved") == "1",
+        wallet_error=request.args.get("wallet_error"),
         error=error,
     )
+
+
+@app.route("/wallet/bybit", methods=["POST"])
+def update_bybit_wallet():
+    try:
+        save_manual_wallet(
+            btc=request.form.get("btc", 0),
+            eth=request.form.get("eth", 0),
+            usdt=request.form.get("usdt", 0),
+        )
+        return redirect(
+            url_for(
+                "home",
+                exchange="bybit",
+                symbol=request.form.get("symbol", "BTCUSDT"),
+                strategy=request.form.get("strategy", "alpha"),
+                wallet_saved="1",
+            )
+            + "#bybit-wallet"
+        )
+    except (TypeError, ValueError) as exc:
+        return redirect(
+            url_for(
+                "home",
+                exchange="bybit",
+                symbol=request.form.get("symbol", "BTCUSDT"),
+                strategy=request.form.get("strategy", "alpha"),
+                wallet_error=str(exc),
+            )
+            + "#bybit-wallet"
+        )
 
 
 @app.route("/trades", methods=["POST"])
