@@ -1004,6 +1004,39 @@
     initializeResizableOrderColumns();
 })();
 
+(function initializeCollapsibleHistoryTables() {
+    document.querySelectorAll(".collapsible-history").forEach((wrapper) => {
+        const rows = Array.from(wrapper.querySelectorAll("tbody > tr"))
+            .filter((row) => !row.querySelector(".history-empty"));
+        const visibleRows = Number(wrapper.dataset.visibleRows || 5);
+
+        if (rows.length <= visibleRows) {
+            return;
+        }
+
+        let expanded = false;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "history-expand-button";
+
+        function render() {
+            rows.forEach((row, index) => {
+                row.hidden = !expanded && index >= visibleRows;
+            });
+            button.textContent = expanded
+                ? "Свернуть"
+                : `Показать ещё ${rows.length - visibleRows}`;
+        }
+
+        button.addEventListener("click", () => {
+            expanded = !expanded;
+            render();
+        });
+        wrapper.insertAdjacentElement("afterend", button);
+        render();
+    });
+})();
+
 (function initializeAlphaRescueCalculator() {
     const calculator = document.getElementById("alpha-rescue-calculator");
     const button = document.getElementById("calculate-alpha-rescue");

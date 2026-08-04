@@ -1682,6 +1682,56 @@ body.is-resizing-workspace {
     color: #dbeafe;
 }
 
+.tracking-settings-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 9px;
+}
+
+.tracking-settings-form label {
+    display: grid;
+    gap: 4px;
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.tracking-settings-form select,
+.tracking-settings-form button {
+    min-height: 36px;
+    padding: 7px 10px;
+    color: #f8fafc;
+    background: #111827;
+    border: 1px solid #475569;
+    border-radius: 8px;
+}
+
+.tracking-settings-form button,
+.history-expand-button {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.tracking-settings-form button {
+    background: #2563eb;
+    border-color: #3b82f6;
+}
+
+.history-expand-button {
+    display: block;
+    margin: 10px auto 0;
+    padding: 8px 16px;
+    color: #bfdbfe;
+    background: #172554;
+    border: 1px solid #3b82f6;
+    border-radius: 9px;
+}
+
+.history-expand-button:hover {
+    color: #ffffff;
+    background: #1d4ed8;
+}
+
 @media (max-width: 900px) {
     .effectiveness-metrics {
         grid-template-columns: repeat(2, minmax(0, 1fr));

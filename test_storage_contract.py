@@ -288,6 +288,27 @@ class StorageSchemaContractTest(unittest.TestCase):
         self.assertEqual(completed["counts"]["TP2"], 1)
         self.assertEqual(completed["win_rate"], 100.0)
 
+    def test_tracking_intervals_are_configurable_and_runs_are_throttled(self):
+        saved = dashboard_history.save_tracking_intervals(5, 10)
+
+        self.assertEqual(saved, {"signals": 5, "statistics": 10})
+        self.assertEqual(
+            dashboard_history.get_tracking_intervals(),
+            {"signals": 5, "statistics": 10},
+        )
+        self.assertTrue(
+            dashboard_history.claim_tracking_run("signals", 5, now_unix=1000)
+        )
+        self.assertFalse(
+            dashboard_history.claim_tracking_run("signals", 5, now_unix=1100)
+        )
+        self.assertTrue(
+            dashboard_history.claim_tracking_run("signals", 5, now_unix=1300)
+        )
+
+        with self.assertRaises(ValueError):
+            dashboard_history.save_tracking_intervals(2, 15)
+
     def test_legacy_history_schema_is_upgraded_without_losing_rows(self):
         with sqlite3.connect(self.dashboard_database) as connection:
             connection.execute(

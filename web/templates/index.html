@@ -1260,7 +1260,7 @@
                         Не удалось получить историю OKX: {{ okx_account_error }}
                     </div>
                 {% else %}
-                    <div class="history-table-scroll">
+                    <div class="history-table-scroll collapsible-history" data-visible-rows="5">
                         <table class="history-table open-orders-table">
                             <thead>
                                 <tr>
@@ -1423,7 +1423,7 @@
             <section>
                 <h2 class="section-title">История и статистика</h2>
 
-                <div class="effectiveness-panel">
+                <div id="effectiveness" class="effectiveness-panel">
                     <div class="effectiveness-heading">
                         <div>
                             <strong>Эффективность {{ active_strategy|capitalize }}</strong>
@@ -1431,6 +1431,38 @@
                         </div>
                         <span class="connection-badge is-market">Наблюдение без изменения стратегии</span>
                     </div>
+                    <form class="tracking-settings-form" method="post" action="{{ url_for('update_tracking_settings') }}">
+                        <input type="hidden" name="exchange" value="{{ active_exchange }}">
+                        <input type="hidden" name="symbol" value="{{ active_symbol }}">
+                        <input type="hidden" name="strategy" value="{{ active_strategy }}">
+                        <label>
+                            Автосигналы
+                            <select name="signals_interval">
+                                {% for minutes in [1, 5, 10, 15] %}
+                                    <option value="{{ minutes }}" {{ 'selected' if tracking_intervals['signals'] == minutes else '' }}>
+                                        {{ minutes }} мин.
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <label>
+                            Статистика Alpha
+                            <select name="statistics_interval">
+                                {% for minutes in [1, 5, 10, 15] %}
+                                    <option value="{{ minutes }}" {{ 'selected' if tracking_intervals['statistics'] == minutes else '' }}>
+                                        {{ minutes }} мин.
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </label>
+                        <button type="submit">Сохранить интервалы</button>
+                    </form>
+                    {% if tracking_settings_saved %}
+                        <div class="form-message form-success">Интервалы обновлены. Перезапуск не требуется.</div>
+                    {% endif %}
+                    {% if tracking_settings_error %}
+                        <div class="form-message form-error">{{ tracking_settings_error }}</div>
+                    {% endif %}
                     <div class="effectiveness-metrics">
                         <div><span>Сценариев</span><strong>{{ effectiveness["total"] }}</strong></div>
                         <div><span>Ожидают входа</span><strong>{{ effectiveness["counts"]["NOT_TRIGGERED"] }}</strong></div>
@@ -1517,7 +1549,7 @@
                 </div>
 
                 <div class="history-table-card">
-                    <div class="history-table-scroll">
+                    <div class="history-table-scroll collapsible-history" data-visible-rows="5">
                         <table class="history-table">
                             <thead>
                                 <tr>
@@ -1661,7 +1693,7 @@
                 <h3 class="subsection-title">Завершённые циклы BUY → SELL</h3>
 
                 <div class="history-table-card">
-                    <div class="history-table-scroll">
+                    <div class="history-table-scroll collapsible-history" data-visible-rows="5">
                         <table class="history-table">
                             <thead>
                                 <tr>
@@ -1724,7 +1756,7 @@
                 </div>
 
                 <div class="history-table-card">
-                    <div class="history-table-scroll">
+                    <div class="history-table-scroll collapsible-history" data-visible-rows="5">
                         <table class="history-table">
                             <thead>
                                 <tr>

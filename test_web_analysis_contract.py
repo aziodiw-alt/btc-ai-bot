@@ -281,6 +281,24 @@ class DashboardAnalysisContractTest(unittest.TestCase):
             btc="0.01", eth="0.5", usdt="100"
         )
 
+    @patch("web.app.save_tracking_intervals")
+    def test_tracking_intervals_update_without_restart(self, save_intervals):
+        response = self.client.post(
+            "/settings/tracking",
+            data={
+                "signals_interval": "5",
+                "statistics_interval": "10",
+                "exchange": "bybit",
+                "symbol": "BTCUSDT",
+                "strategy": "alpha",
+            },
+            headers=self.auth_headers(),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.location.endswith("#effectiveness"))
+        save_intervals.assert_called_once_with("5", "10")
+
     def test_manual_bybit_portfolio_values_tokens_in_usdt(self):
         portfolio = web_app._build_manual_wallet_portfolio(
             {"btc": 0.01, "eth": 0.5, "usdt": 100},

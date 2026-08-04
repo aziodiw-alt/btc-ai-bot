@@ -23,7 +23,9 @@ from dashboard_history import (
     get_dashboard_history,
     get_strategy_effectiveness,
     get_strategy_comparison,
+    get_tracking_intervals,
     save_snapshot_if_due,
+    save_tracking_intervals,
 )
 from dashboard_trades import (
     add_pending_orders,
@@ -275,6 +277,7 @@ def home():
     strategy_name = _normalize_strategy_name(
         request.args.get("strategy", "swing")
     )
+    tracking_intervals = get_tracking_intervals()
     try:
         result = _get_cached_strategy(
             strategy_name,
@@ -488,6 +491,9 @@ def home():
         stats=history_data["stats"],
         strategy_comparison=strategy_comparison,
         effectiveness=effectiveness,
+        tracking_intervals=tracking_intervals,
+        tracking_settings_saved=request.args.get("tracking_settings_saved") == "1",
+        tracking_settings_error=request.args.get("tracking_settings_error"),
         trades=trades_data["items"],
         bybit_executions=trades_data["executions"],
         bybit_cycles=trades_data["cycles"],
@@ -548,6 +554,24 @@ def update_bybit_wallet():
             )
             + "#bybit-wallet"
         )
+
+
+@app.route("/settings/tracking", methods=["POST"])
+def update_tracking_settings():
+    redirect_values = {
+        "exchange": request.form.get("exchange", "bybit"),
+        "symbol": request.form.get("symbol", "BTCUSDT"),
+        "strategy": request.form.get("strategy", "alpha"),
+    }
+    try:
+        save_tracking_intervals(
+            request.form.get("signals_interval", 15),
+            request.form.get("statistics_interval", 15),
+        )
+        redirect_values["tracking_settings_saved"] = "1"
+    except (TypeError, ValueError) as exc:
+        redirect_values["tracking_settings_error"] = str(exc)
+    return redirect(url_for("home", **redirect_values) + "#effectiveness")
 
 
 @app.route("/trades", methods=["POST"])

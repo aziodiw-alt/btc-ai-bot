@@ -3,7 +3,7 @@
 import json
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 
 from btc_terminal.core.constants import HISTORY_SNAPSHOT_INTERVAL_SECONDS
 
@@ -92,7 +92,83 @@ def _connect():
         )
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tracking_settings (
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS tracking_runs (
+            task_name TEXT PRIMARY KEY,
+            last_run_unix INTEGER NOT NULL
+        )
+        """
+    )
     return connection
+
+
+TRACKING_INTERVAL_OPTIONS = (1, 5, 10, 15)
+
+
+def get_tracking_intervals():
+    values = {"signals": 15, "statistics": 15}
+    with _connect() as connection:
+        rows = connection.execute(
+            "SELECT setting_key, setting_value FROM tracking_settings"
+        ).fetchall()
+    for row in rows:
+        if row["setting_key"] in values:
+            parsed = int(row["setting_value"])
+            if parsed in TRACKING_INTERVAL_OPTIONS:
+                values[row["setting_key"]] = parsed
+    return values
+
+
+def save_tracking_intervals(signals, statistics):
+    values = {"signals": int(signals), "statistics": int(statistics)}
+    if any(value not in TRACKING_INTERVAL_OPTIONS for value in values.values()):
+        raise ValueError("Допустимый интервал: 1, 5, 10 или 15 минут.")
+    updated_at = datetime.now(timezone.utc).isoformat()
+    with _connect() as connection:
+        for key, value in values.items():
+            connection.execute(
+                """
+                INSERT INTO tracking_settings(setting_key, setting_value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(setting_key) DO UPDATE SET
+                    setting_value = excluded.setting_value,
+                    updated_at = excluded.updated_at
+                """,
+                (key, str(value), updated_at),
+            )
+    return values
+
+
+def claim_tracking_run(task_name, interval_minutes, now_unix=None):
+    now_unix = int(now_unix or datetime.now(timezone.utc).timestamp())
+    interval_seconds = int(interval_minutes) * 60
+    with _connect() as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            "SELECT last_run_unix FROM tracking_runs WHERE task_name = ?",
+            (str(task_name),),
+        ).fetchone()
+        if row and now_unix - int(row["last_run_unix"]) < interval_seconds:
+            return False
+        connection.execute(
+            """
+            INSERT INTO tracking_runs(task_name, last_run_unix)
+            VALUES (?, ?)
+            ON CONFLICT(task_name) DO UPDATE SET last_run_unix = excluded.last_run_unix
+            """,
+            (str(task_name), now_unix),
+        )
+    return True
 
 
 def _update_open_signal(connection, result, now, now_unix):

@@ -34,7 +34,11 @@ from market import get_ticker
 from okx_client import OkxReadOnlyClient
 from strategy import analyze_strategy
 from alpha_strategy import analyze_alpha_strategy
-from btc_terminal.storage.history import save_snapshot_if_due
+from btc_terminal.storage.history import (
+    claim_tracking_run,
+    get_tracking_intervals,
+    save_snapshot_if_due,
+)
 from trade_import import import_bybit_csv
 from btc_terminal.storage.trades import (
     get_manual_wallet,
@@ -761,6 +765,11 @@ async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
     subscribers = get_signal_subscribers()
     if not subscribers:
         return
+    intervals = await asyncio.to_thread(get_tracking_intervals)
+    if not await asyncio.to_thread(
+        claim_tracking_run, "telegram_signals", intervals["signals"]
+    ):
+        return
 
     symbols = ("BTCUSDT", "ETHUSDT")
     analyses = await asyncio.gather(
@@ -826,6 +835,11 @@ async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
 
 
 async def track_alpha_effectiveness(context: ContextTypes.DEFAULT_TYPE):
+    intervals = await asyncio.to_thread(get_tracking_intervals)
+    if not await asyncio.to_thread(
+        claim_tracking_run, "alpha_statistics", intervals["statistics"]
+    ):
+        return
     symbols = ("BTCUSDT", "ETHUSDT")
     analyses = await asyncio.gather(
         *(
@@ -891,13 +905,13 @@ def main():
     )
     app.job_queue.run_repeating(
         check_auto_signals,
-        interval=15 * 60,
+        interval=60,
         first=30,
         name="btc_eth_auto_signals",
     )
     app.job_queue.run_repeating(
         track_alpha_effectiveness,
-        interval=15 * 60,
+        interval=60,
         first=60,
         name="alpha_effectiveness_tracker",
     )
