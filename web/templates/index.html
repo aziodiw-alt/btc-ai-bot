@@ -427,6 +427,7 @@
                                 <span>Ордер</span>
                                 <span>Доля</span>
                                 <span>Цена</span>
+                                <span></span>
                                 <span>Сумма</span>
                                 <span></span>
                             </div>
@@ -437,7 +438,15 @@
                                 >
                                     <span>{{ entry["label"] }}</span>
                                     <strong>{{ entry["allocation_pct"] }}%</strong>
-                                    <span>{{ "{:,.2f}".format(entry["price"]).replace(",", " ") }}</span>
+                                    <span id="alpha-entry-price-{{ loop.index }}">
+                                        {{ "{:,.2f}".format(entry["price"]).replace(",", " ") }}
+                                    </span>
+                                    <button
+                                        class="copy-level-button alpha-copy-button"
+                                        type="button"
+                                        data-copy-target="alpha-entry-price-{{ loop.index }}"
+                                        aria-label="Копировать цену {{ entry['label'] }}"
+                                    >Цена</button>
                                     <strong
                                         id="alpha-entry-amount-{{ loop.index }}"
                                         class="alpha-entry-amount"
@@ -448,7 +457,7 @@
                                         type="button"
                                         data-copy-target="alpha-entry-amount-{{ loop.index }}"
                                         disabled
-                                    >Копировать</button>
+                                    >Сумма</button>
                                 </div>
                             {% endfor %}
                             <p class="alpha-budget-hint">

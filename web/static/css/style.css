@@ -568,7 +568,13 @@ h1 {
 .alpha-allocation-heading,
 .alpha-entry-row {
     display: grid;
-    grid-template-columns: minmax(54px, 1fr) 42px minmax(72px, 1fr) minmax(68px, 0.9fr) auto;
+    grid-template-columns:
+        minmax(52px, 0.8fr)
+        38px
+        minmax(66px, 0.9fr)
+        auto
+        minmax(64px, 0.8fr)
+        auto;
     gap: 8px;
     align-items: center;
 }
@@ -634,15 +640,11 @@ h1 {
     }
 
     .alpha-entry-row {
-        grid-template-columns: 1fr auto auto;
-    }
-
-    .alpha-entry-row > span:nth-child(3) {
-        display: none;
+        grid-template-columns: 1fr auto auto auto;
     }
 
     .alpha-entry-amount {
-        grid-column: 2;
+        grid-column: 3;
     }
 }
 
