@@ -60,6 +60,11 @@ from btc_terminal.application.analysis import AnalysisService
 from btc_terminal.application.reports import AIReportService
 from btc_terminal.application.trades import summarize_open_orders
 from btc_terminal.application.rescue import calculate_rescue_plan
+from btc_terminal.storage.paper import (
+    get_paper_dashboard,
+    start_paper_session,
+    stop_paper_session,
+)
 
 
 app = Flask(__name__)
@@ -360,6 +365,13 @@ def home():
     binance_account_error = None
     binance_open_orders = []
     binance_trade_history = []
+    paper_data = {
+        "active": None,
+        "orders": [],
+        "events": [],
+        "history": [],
+        "stats": {"completed": 0, "wins": 0, "total_pnl": 0},
+    }
     manual_bybit_wallet = {
         "btc": 0.0,
         "eth": 0.0,
@@ -412,6 +424,12 @@ def home():
             binance_trade_history = binance_client.get_trade_history(symbol)
         except Exception as exc:
             binance_account_error = str(exc)
+        try:
+            paper_data = get_paper_dashboard(
+                symbol, current_price=result["price"] if result else None
+            )
+        except Exception as exc:
+            trade_data_error = str(exc)
     else:
         try:
             manual_bybit_wallet = get_manual_wallet()
@@ -547,11 +565,57 @@ def home():
         binance_account_error=binance_account_error,
         binance_open_orders=binance_open_orders,
         binance_trade_history=binance_trade_history,
+        paper_data=paper_data,
+        paper_started=request.args.get("paper_started") == "1",
+        paper_stopped=request.args.get("paper_stopped") == "1",
+        paper_error=request.args.get("paper_error"),
         manual_bybit_wallet=manual_bybit_wallet,
         manual_bybit_portfolio=manual_bybit_portfolio,
         wallet_saved=request.args.get("wallet_saved") == "1",
         wallet_error=request.args.get("wallet_error"),
         error=error,
+    )
+
+
+@app.route("/paper/binance/start", methods=["POST"])
+def start_binance_paper():
+    symbol = _normalize_symbol(request.form.get("symbol", "BTCUSDT"))
+    try:
+        result = _get_cached_strategy("alpha", symbol, "binance")
+        start_paper_session(symbol, request.form.get("budget", 0), result)
+        flag = {"paper_started": "1"}
+    except (KeyError, TypeError, ValueError) as exc:
+        flag = {"paper_error": str(exc)}
+    return redirect(
+        url_for(
+            "home",
+            exchange="binance",
+            symbol=symbol,
+            strategy="alpha",
+            **flag,
+        )
+        + "#binance-paper"
+    )
+
+
+@app.route("/paper/binance/stop", methods=["POST"])
+def stop_binance_paper():
+    symbol = _normalize_symbol(request.form.get("symbol", "BTCUSDT"))
+    try:
+        price = float(get_ticker(symbol, "binance")["price"])
+        stop_paper_session(request.form.get("session_id"), price)
+        flag = {"paper_stopped": "1"}
+    except (KeyError, TypeError, ValueError) as exc:
+        flag = {"paper_error": str(exc)}
+    return redirect(
+        url_for(
+            "home",
+            exchange="binance",
+            symbol=symbol,
+            strategy="alpha",
+            **flag,
+        )
+        + "#binance-paper"
     )
 
 

@@ -309,6 +309,49 @@
             {% endif %}
         </section>
 
+        {% if active_exchange == "binance" %}
+            <section id="binance-paper" class="paper-panel">
+                <div class="paper-heading">
+                    <div>
+                        <h2>Binance Paper Trading · Alpha</h2>
+                        <p>Виртуальная торговля — реальные ордера на Binance не отправляются.</p>
+                    </div>
+                    <span class="connection-badge is-market">СИМУЛЯТОР</span>
+                </div>
+                {% if paper_started %}<div class="form-message form-success">Виртуальная сессия запущена.</div>{% endif %}
+                {% if paper_stopped %}<div class="form-message form-success">Виртуальная сессия остановлена.</div>{% endif %}
+                {% if paper_error %}<div class="form-message form-error">{{ paper_error }}</div>{% endif %}
+
+                {% if paper_data["active"] %}
+                    {% set paper = paper_data["active"] %}
+                    <div class="paper-metrics">
+                        <div><span>Начальный депозит</span><strong>{{ "{:,.2f}".format(paper["initial_balance"]) }} USDT</strong></div>
+                        <div><span>Свободно</span><strong>{{ "{:,.2f}".format(paper["cash_balance"]) }} USDT</strong></div>
+                        <div><span>Монет</span><strong>{{ "{:.8f}".format(paper["asset_balance"]) }}</strong></div>
+                        <div><span>Средний вход</span><strong>{{ "{:,.2f}".format(paper["average_entry"] or 0) }}</strong></div>
+                        <div><span>Виртуальный капитал</span><strong>{{ "{:,.2f}".format(paper["equity"]) }} USDT</strong></div>
+                        <div><span>Результат</span><strong class="{{ 'status-buy' if paper['total_pnl'] >= 0 else 'status-skip' }}">{{ "%+.2f"|format(paper["total_pnl"]) }} USDT</strong></div>
+                    </div>
+                    <div class="paper-levels">Stop {{ "{:,.2f}".format(paper["stop_loss"]) }} · TP1 {{ "{:,.2f}".format(paper["take_profit_1"]) }} · TP2 {{ "{:,.2f}".format(paper["take_profit_2"]) }}</div>
+                    <div class="table-wrap">
+                        <table><thead><tr><th>Вход</th><th>Доля</th><th>Цена</th><th>Количество</th><th>Статус</th></tr></thead>
+                        <tbody>{% for order in paper_data["orders"] %}<tr><td>{{ order["label"] }}</td><td>{{ order["allocation_pct"]|int }}%</td><td>{{ "{:,.2f}".format(order["limit_price"]) }}</td><td>{{ "{:.8f}".format(order["quantity"]) }}</td><td>{{ order["status"] }}</td></tr>{% endfor %}</tbody></table>
+                    </div>
+                    <form method="post" action="{{ url_for('stop_binance_paper') }}" onsubmit="return confirm('Остановить виртуальную сессию и закрыть позицию по текущей цене?');">
+                        <input type="hidden" name="symbol" value="{{ active_symbol }}"><input type="hidden" name="session_id" value="{{ paper['id'] }}">
+                        <button class="paper-stop" type="submit">Аварийно остановить симулятор</button>
+                    </form>
+                {% else %}
+                    <form class="paper-start-form" method="post" action="{{ url_for('start_binance_paper') }}">
+                        <input type="hidden" name="symbol" value="{{ active_symbol }}">
+                        <label>Виртуальный депозит USDT<input name="budget" type="text" inputmode="decimal" placeholder="Например, 100" required></label>
+                        <button type="submit">Запустить Alpha 20/30/50</button>
+                    </form>
+                {% endif %}
+                <div class="paper-summary">Завершено: {{ paper_data["stats"]["completed"] }} · Прибыльных: {{ paper_data["stats"]["wins"] }} · Общий PnL: {{ "%+.2f"|format(paper_data["stats"]["total_pnl"]) }} USDT</div>
+            </section>
+        {% endif %}
+
         {% if error %}
             <div class="error">
                 Ошибка анализа: {{ error }}
