@@ -350,6 +350,40 @@
                 {% endif %}
                 <div class="paper-summary">Завершено: {{ paper_data["stats"]["completed"] }} · Прибыльных: {{ paper_data["stats"]["wins"] }} · Общий PnL: {{ "%+.2f"|format(paper_data["stats"]["total_pnl"]) }} USDT</div>
             </section>
+
+            <section id="binance-scalp" class="paper-panel scalp-panel">
+                <div class="paper-heading">
+                    <div><h2>Binance Scalp Paper</h2><p>Два независимых виртуальных теста. Реальные ордера не отправляются.</p></div>
+                    <span class="connection-badge is-market">1m / 5m</span>
+                </div>
+                {% if scalp_started %}<div class="form-message form-success">Скальпинг-профиль запущен.</div>{% endif %}
+                {% if scalp_stopped %}<div class="form-message form-success">Скальпинг-профиль остановлен.</div>{% endif %}
+                {% if scalp_error %}<div class="form-message form-error">{{ scalp_error }}</div>{% endif %}
+                <div class="scalp-launch-grid">
+                    <form method="post" action="{{ url_for('start_binance_scalp') }}">
+                        <input type="hidden" name="symbol" value="{{ active_symbol }}"><input type="hidden" name="profile" value="scalp_5m">
+                        <h3>Scalp 5m</h3><p>Умеренный: 70% депозита · TP 0,70% · Stop 0,40%.</p>
+                        <input name="budget" type="text" inputmode="decimal" placeholder="Виртуальный депозит USDT" required><button type="submit">Запустить 5m</button>
+                    </form>
+                    <form class="scalp-aggressive" method="post" action="{{ url_for('start_binance_scalp') }}">
+                        <input type="hidden" name="symbol" value="{{ active_symbol }}"><input type="hidden" name="profile" value="scalp_aggressive_1m">
+                        <h3>Scalp Aggressive 1m</h3><p>Высокий риск: 100% депозита · TP 0,50% · Stop 0,30%.</p>
+                        <input name="budget" type="text" inputmode="decimal" placeholder="Виртуальный депозит USDT" required><button type="submit">Запустить Aggressive</button>
+                    </form>
+                </div>
+                {% for scalp in scalp_data %}
+                    <article class="scalp-account {{ 'is-active' if scalp['status'] == 'ACTIVE' else '' }}">
+                        <div class="paper-heading"><h3>{{ scalp["profile_label"] }} · {{ scalp["status"] }}</h3><strong class="{{ 'status-buy' if scalp['total_pnl'] >= 0 else 'status-skip' }}">{{ "%+.2f"|format(scalp["total_pnl"]) }} USDT</strong></div>
+                        <div class="paper-metrics">
+                            <div><span>Капитал</span><strong>{{ "{:.2f}".format(scalp["equity"]) }}</strong></div><div><span>Позиция</span><strong>{{ "{:.8f}".format(scalp["quantity"]) }}</strong></div>
+                            <div><span>Вход</span><strong>{{ "{:.2f}".format(scalp["entry_price"] or 0) }}</strong></div><div><span>TP / Stop</span><strong>{{ "{:.2f}".format(scalp["target_price"] or 0) }} / {{ "{:.2f}".format(scalp["stop_price"] or 0) }}</strong></div>
+                            <div><span>Сделки / победы</span><strong>{{ scalp["stats"]["closed"] }} / {{ scalp["stats"]["wins"] }}</strong></div><div><span>Убытки подряд</span><strong>{{ scalp["consecutive_losses"] }}</strong></div>
+                        </div>
+                        {% if scalp["status"] == "ACTIVE" %}<form method="post" action="{{ url_for('stop_binance_scalp') }}" onsubmit="return confirm('Остановить тест и закрыть виртуальную позицию?');"><input type="hidden" name="symbol" value="{{ active_symbol }}"><input type="hidden" name="account_id" value="{{ scalp['id'] }}"><button class="paper-stop" type="submit">Остановить профиль</button></form>{% endif %}
+                        {% if scalp["trades"] %}<details><summary>Последние сделки ({{ scalp["trades"]|length }})</summary><div class="table-wrap"><table><thead><tr><th>Вход</th><th>Выход</th><th>Причина</th><th>PnL</th></tr></thead><tbody>{% for trade in scalp["trades"] %}<tr><td>{{ "{:.2f}".format(trade["entry_price"]) }}</td><td>{{ "{:.2f}".format(trade["exit_price"] or 0) }}</td><td>{{ trade["exit_reason"] or "OPEN" }}</td><td>{{ "%+.2f"|format(trade["pnl"] or 0) }}</td></tr>{% endfor %}</tbody></table></div></details>{% endif %}
+                    </article>
+                {% endfor %}
+            </section>
         {% endif %}
 
         {% if error %}

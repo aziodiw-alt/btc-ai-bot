@@ -30,7 +30,7 @@ from btc_terminal.storage.telegram import (
     set_last_signal_key,
     toggle_signal_subscription,
 )
-from market import get_ticker
+from market import get_klines, get_ticker
 from okx_client import OkxReadOnlyClient
 from strategy import analyze_strategy
 from alpha_strategy import analyze_alpha_strategy
@@ -42,6 +42,10 @@ from btc_terminal.storage.history import (
 from btc_terminal.storage.paper import (
     evaluate_paper_symbol,
     get_active_paper_symbols,
+)
+from btc_terminal.storage.scalp_paper import (
+    evaluate_scalp_account,
+    get_active_scalp_accounts,
 )
 from trade_import import import_bybit_csv
 from btc_terminal.storage.trades import (
@@ -872,6 +876,36 @@ async def track_binance_paper_trading(context: ContextTypes.DEFAULT_TYPE):
             print(f"Binance paper-trading check failed for {symbol}: {error}")
 
 
+async def track_binance_scalp_paper(context: ContextTypes.DEFAULT_TYPE):
+    """Evaluate independent 1m/5m virtual scalping profiles."""
+    accounts = await asyncio.to_thread(get_active_scalp_accounts)
+    for account in accounts:
+        try:
+            candles = await asyncio.to_thread(
+                get_klines,
+                account["interval"] if "interval" in account else (
+                    "1m" if account["profile"] == "scalp_aggressive_1m" else "5m"
+                ),
+                100,
+                account["symbol"],
+                "binance",
+            )
+            ticker = await asyncio.to_thread(
+                get_ticker, account["symbol"], "binance"
+            )
+            await asyncio.to_thread(
+                evaluate_scalp_account,
+                account["id"],
+                candles,
+                float(ticker["price"]),
+            )
+        except Exception as error:
+            print(
+                f"Binance scalp-paper check failed for "
+                f"{account['symbol']} {account['profile']}: {error}"
+            )
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
     normalized = text.lower()
@@ -937,6 +971,12 @@ def main():
         interval=60,
         first=45,
         name="binance_paper_trading",
+    )
+    app.job_queue.run_repeating(
+        track_binance_scalp_paper,
+        interval=60,
+        first=50,
+        name="binance_scalp_paper",
     )
 
     print("Бот запущен...")

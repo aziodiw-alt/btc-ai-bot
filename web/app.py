@@ -65,6 +65,11 @@ from btc_terminal.storage.paper import (
     start_paper_session,
     stop_paper_session,
 )
+from btc_terminal.storage.scalp_paper import (
+    get_scalp_dashboard,
+    start_scalp_account,
+    stop_scalp_account,
+)
 
 
 app = Flask(__name__)
@@ -372,6 +377,7 @@ def home():
         "history": [],
         "stats": {"completed": 0, "wins": 0, "total_pnl": 0},
     }
+    scalp_data = []
     manual_bybit_wallet = {
         "btc": 0.0,
         "eth": 0.0,
@@ -426,6 +432,12 @@ def home():
             binance_account_error = str(exc)
         try:
             paper_data = get_paper_dashboard(
+                symbol, current_price=result["price"] if result else None
+            )
+        except Exception as exc:
+            trade_data_error = str(exc)
+        try:
+            scalp_data = get_scalp_dashboard(
                 symbol, current_price=result["price"] if result else None
             )
         except Exception as exc:
@@ -569,6 +581,10 @@ def home():
         paper_started=request.args.get("paper_started") == "1",
         paper_stopped=request.args.get("paper_stopped") == "1",
         paper_error=request.args.get("paper_error"),
+        scalp_data=scalp_data,
+        scalp_started=request.args.get("scalp_started") == "1",
+        scalp_stopped=request.args.get("scalp_stopped") == "1",
+        scalp_error=request.args.get("scalp_error"),
         manual_bybit_wallet=manual_bybit_wallet,
         manual_bybit_portfolio=manual_bybit_portfolio,
         wallet_saved=request.args.get("wallet_saved") == "1",
@@ -616,6 +632,39 @@ def stop_binance_paper():
             **flag,
         )
         + "#binance-paper"
+    )
+
+
+@app.route("/paper/binance/scalp/start", methods=["POST"])
+def start_binance_scalp():
+    symbol = _normalize_symbol(request.form.get("symbol", "BTCUSDT"))
+    try:
+        start_scalp_account(
+            symbol,
+            request.form.get("profile", "scalp_5m"),
+            request.form.get("budget", 0),
+        )
+        flag = {"scalp_started": "1"}
+    except (TypeError, ValueError) as exc:
+        flag = {"scalp_error": str(exc)}
+    return redirect(
+        url_for("home", exchange="binance", symbol=symbol, strategy="alpha", **flag)
+        + "#binance-scalp"
+    )
+
+
+@app.route("/paper/binance/scalp/stop", methods=["POST"])
+def stop_binance_scalp():
+    symbol = _normalize_symbol(request.form.get("symbol", "BTCUSDT"))
+    try:
+        price = float(get_ticker(symbol, "binance")["price"])
+        stop_scalp_account(request.form.get("account_id"), price)
+        flag = {"scalp_stopped": "1"}
+    except (KeyError, TypeError, ValueError) as exc:
+        flag = {"scalp_error": str(exc)}
+    return redirect(
+        url_for("home", exchange="binance", symbol=symbol, strategy="alpha", **flag)
+        + "#binance-scalp"
     )
 
 
