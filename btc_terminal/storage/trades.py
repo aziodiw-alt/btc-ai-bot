@@ -359,11 +359,26 @@ def _connect():
     return connection
 
 
+def _parse_manual_balance(value):
+    if isinstance(value, (int, float)):
+        return float(value)
+
+    text = str(value or "0").strip().replace(" ", "").replace("'", "")
+    if "," in text and "." in text:
+        if text.rfind(".") > text.rfind(","):
+            text = text.replace(",", "")
+        else:
+            text = text.replace(".", "").replace(",", ".")
+    elif "," in text:
+        text = text.replace(",", ".")
+    return float(text)
+
+
 def save_manual_wallet(btc=0, eth=0, usdt=0):
     balances = {
-        "btc": float(btc or 0),
-        "eth": float(eth or 0),
-        "usdt": float(usdt or 0),
+        "btc": _parse_manual_balance(btc),
+        "eth": _parse_manual_balance(eth),
+        "usdt": _parse_manual_balance(usdt),
     }
     if any(value < 0 for value in balances.values()):
         raise ValueError("Баланс не может быть отрицательным.")

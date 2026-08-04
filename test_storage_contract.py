@@ -141,6 +141,20 @@ class StorageSchemaContractTest(unittest.TestCase):
         self.assertEqual(wallet["eth"], 0.4)
         self.assertEqual(wallet["usdt"], 80.0)
 
+    def test_manual_bybit_wallet_accepts_copied_exchange_numbers(self):
+        database.init_database()
+        with patch.dict("os.environ", {"TELEGRAM_USER_ID": "1"}):
+            dashboard_trades.save_manual_wallet(
+                btc="0.01234567",
+                eth="1 234,5678",
+                usdt="1,167.6175",
+            )
+            wallet = dashboard_trades.get_manual_wallet()
+
+        self.assertEqual(wallet["btc"], 0.01234567)
+        self.assertEqual(wallet["eth"], 1234.5678)
+        self.assertEqual(wallet["usdt"], 1167.6175)
+
     def test_imported_open_order_reopens_cancelled_order_with_same_id(self):
         database.init_database()
         order = {
