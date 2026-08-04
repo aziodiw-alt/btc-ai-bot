@@ -39,6 +39,10 @@ from btc_terminal.storage.history import (
     get_tracking_intervals,
     save_snapshot_if_due,
 )
+from btc_terminal.storage.paper import (
+    evaluate_paper_symbol,
+    get_active_paper_symbols,
+)
 from trade_import import import_bybit_csv
 from btc_terminal.storage.trades import (
     get_manual_wallet,
@@ -855,6 +859,19 @@ async def track_alpha_effectiveness(context: ContextTypes.DEFAULT_TYPE):
         await asyncio.to_thread(save_snapshot_if_due, result)
 
 
+async def track_binance_paper_trading(context: ContextTypes.DEFAULT_TYPE):
+    """Evaluate virtual Binance orders using public prices only."""
+    symbols = await asyncio.to_thread(get_active_paper_symbols)
+    for symbol in symbols:
+        try:
+            ticker = await asyncio.to_thread(get_ticker, symbol, "binance")
+            await asyncio.to_thread(
+                evaluate_paper_symbol, symbol, float(ticker["price"])
+            )
+        except Exception as error:
+            print(f"Binance paper-trading check failed for {symbol}: {error}")
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
     normalized = text.lower()
@@ -914,6 +931,12 @@ def main():
         interval=60,
         first=60,
         name="alpha_effectiveness_tracker",
+    )
+    app.job_queue.run_repeating(
+        track_binance_paper_trading,
+        interval=60,
+        first=45,
+        name="binance_paper_trading",
     )
 
     print("Бот запущен...")
