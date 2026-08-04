@@ -62,7 +62,126 @@ def _connect():
         ON analysis_history(created_at_unix DESC)
         """
     )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS strategy_signal_outcomes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            created_at_unix INTEGER NOT NULL,
+            updated_at TEXT NOT NULL,
+            resolved_at TEXT,
+            exchange TEXT NOT NULL,
+            strategy_name TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            signal_price REAL NOT NULL,
+            entry_price REAL NOT NULL,
+            stop_loss REAL NOT NULL,
+            take_profit_1 REAL NOT NULL,
+            take_profit_2 REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'NOT_TRIGGERED',
+            score INTEGER NOT NULL,
+            grade TEXT NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS strategy_signal_lookup_idx
+        ON strategy_signal_outcomes(
+            exchange, strategy_name, symbol, resolved_at, created_at_unix DESC
+        )
+        """
+    )
     return connection
+
+
+def _update_open_signal(connection, result, now, now_unix):
+    exchange = str(result.get("exchange", "bybit"))
+    strategy_name = str(result.get("strategy_key", "swing"))
+    symbol = str(result.get("display_symbol", "BTC/USDT"))
+    price = float(result["price"])
+    rows = connection.execute(
+        """
+        SELECT * FROM strategy_signal_outcomes
+        WHERE exchange = ? AND strategy_name = ? AND symbol = ?
+          AND resolved_at IS NULL
+        ORDER BY created_at_unix
+        """,
+        (exchange, strategy_name, symbol),
+    ).fetchall()
+
+    for row in rows:
+        status = str(row["status"])
+        resolved_at = None
+        age_seconds = now_unix - int(row["created_at_unix"])
+        expiry_seconds = 2 * 86400 if strategy_name == "fast" else 14 * 86400
+
+        if status == "NOT_TRIGGERED" and age_seconds >= expiry_seconds:
+            resolved_at = now.isoformat()
+        elif status == "NOT_TRIGGERED" and price <= float(row["entry_price"]):
+            status = "ACTIVE"
+
+        if status in ("ACTIVE", "TP1"):
+            if price <= float(row["stop_loss"]):
+                status = "STOP"
+                resolved_at = now.isoformat()
+            elif price >= float(row["take_profit_2"]):
+                status = "TP2"
+                resolved_at = now.isoformat()
+            elif price >= float(row["take_profit_1"]):
+                status = "TP1"
+
+        connection.execute(
+            """
+            UPDATE strategy_signal_outcomes
+            SET status = ?, updated_at = ?, resolved_at = ?
+            WHERE id = ?
+            """,
+            (status, now.isoformat(), resolved_at, row["id"]),
+        )
+
+
+def _register_signal_if_needed(connection, result, now, now_unix):
+    if _signal_type(result) == "SKIP":
+        return
+    required = ("planned_entry", "stop_loss", "take_profit_1", "take_profit_2")
+    if any(result.get(key) is None for key in required):
+        return
+
+    identity = (
+        str(result.get("exchange", "bybit")),
+        str(result.get("strategy_key", "swing")),
+        str(result.get("display_symbol", "BTC/USDT")),
+    )
+    active = connection.execute(
+        """
+        SELECT 1 FROM strategy_signal_outcomes
+        WHERE exchange = ? AND strategy_name = ? AND symbol = ?
+          AND resolved_at IS NULL
+        LIMIT 1
+        """,
+        identity,
+    ).fetchone()
+    if active:
+        return
+
+    entry_price = float(result["planned_entry"])
+    status = "ACTIVE" if float(result["price"]) <= entry_price else "NOT_TRIGGERED"
+    connection.execute(
+        """
+        INSERT INTO strategy_signal_outcomes (
+            created_at, created_at_unix, updated_at, exchange,
+            strategy_name, symbol, signal_price, entry_price, stop_loss,
+            take_profit_1, take_profit_2, status, score, grade
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            now.isoformat(), now_unix, now.isoformat(), *identity,
+            float(result["price"]), entry_price, float(result["stop_loss"]),
+            float(result["take_profit_1"]), float(result["take_profit_2"]),
+            status, int(result["total_score"]), str(result["grade"]),
+        ),
+    )
 
 
 def _signal_type(result):
@@ -87,6 +206,7 @@ def save_snapshot_if_due(
     strategy_name = str(result.get("strategy_key", "swing"))
 
     with _connect() as connection:
+        _update_open_signal(connection, result, now, now_unix)
         latest = connection.execute(
             """
             SELECT created_at_unix
@@ -148,8 +268,46 @@ def save_snapshot_if_due(
                 strategy_name,
             ),
         )
+        _register_signal_if_needed(connection, result, now, now_unix)
 
     return True
+
+
+def get_strategy_effectiveness(strategy_name, symbol, exchange):
+    with _connect() as connection:
+        rows = connection.execute(
+            """
+            SELECT * FROM strategy_signal_outcomes
+            WHERE strategy_name = ? AND symbol = ? AND exchange = ?
+            ORDER BY created_at_unix DESC
+            LIMIT 30
+            """,
+            (str(strategy_name), str(symbol), str(exchange)),
+        ).fetchall()
+
+    items = [dict(row) for row in rows]
+    counts = {
+        key: sum(item["status"] == key for item in items)
+        for key in ("NOT_TRIGGERED", "ACTIVE", "TP1", "TP2", "STOP")
+    }
+    completed = counts["TP2"] + counts["STOP"]
+    win_rate = round(counts["TP2"] / completed * 100, 1) if completed else None
+    if completed < 5:
+        commentary = "Пока недостаточно завершённых сценариев для надёжной оценки стратегии."
+    elif win_rate >= 60:
+        commentary = "Стратегия показывает устойчивую долю успешных завершённых сценариев."
+    elif win_rate >= 40:
+        commentary = "Результат смешанный: параметры стратегии пока рано усиливать или ослаблять."
+    else:
+        commentary = "Доля успешных сценариев низкая; перед изменением правил нужно изучить причины Stop."
+    return {
+        "items": items,
+        "total": len(items),
+        "counts": counts,
+        "completed": completed,
+        "win_rate": win_rate,
+        "commentary": commentary,
+    }
 
 
 def get_dashboard_history(

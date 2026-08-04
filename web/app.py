@@ -21,6 +21,7 @@ from alpha_strategy import analyze_alpha_strategy
 from okx_client import OkxReadOnlyClient
 from dashboard_history import (
     get_dashboard_history,
+    get_strategy_effectiveness,
     get_strategy_comparison,
     save_snapshot_if_due,
 )
@@ -287,6 +288,11 @@ def home():
         strategy_comparison = get_strategy_comparison(
             symbol=asset_info["display"]
         )
+        effectiveness = get_strategy_effectiveness(
+            strategy_name,
+            asset_info["display"],
+            active_exchange,
+        )
         error = None
     except Exception as exc:
         result = None
@@ -301,6 +307,14 @@ def home():
             },
         }
         strategy_comparison = []
+        effectiveness = {
+            "items": [],
+            "total": 0,
+            "counts": {key: 0 for key in ("NOT_TRIGGERED", "ACTIVE", "TP1", "TP2", "STOP")},
+            "completed": 0,
+            "win_rate": None,
+            "commentary": "Пока недостаточно данных для оценки стратегии.",
+        }
         error = str(exc)
 
     trades_data = {
@@ -473,6 +487,7 @@ def home():
         history=history_data["items"],
         stats=history_data["stats"],
         strategy_comparison=strategy_comparison,
+        effectiveness=effectiveness,
         trades=trades_data["items"],
         bybit_executions=trades_data["executions"],
         bybit_cycles=trades_data["cycles"],

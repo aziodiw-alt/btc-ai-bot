@@ -33,6 +33,8 @@ from btc_terminal.storage.telegram import (
 from market import get_ticker
 from okx_client import OkxReadOnlyClient
 from strategy import analyze_strategy
+from alpha_strategy import analyze_alpha_strategy
+from btc_terminal.storage.history import save_snapshot_if_due
 from trade_import import import_bybit_csv
 from btc_terminal.storage.trades import (
     get_manual_wallet,
@@ -776,6 +778,8 @@ async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
             )
             continue
 
+        await asyncio.to_thread(save_snapshot_if_due, result)
+
         is_signal = (
             result["grade"] in {"A", "A+"}
             and result["trend_score"] >= 20
@@ -819,6 +823,22 @@ async def check_auto_signals(context: ContextTypes.DEFAULT_TYPE):
                     f"Не удалось отправить сигнал {symbol} "
                     f"в чат {chat_id}: {error}"
                 )
+
+
+async def track_alpha_effectiveness(context: ContextTypes.DEFAULT_TYPE):
+    symbols = ("BTCUSDT", "ETHUSDT")
+    analyses = await asyncio.gather(
+        *(
+            asyncio.to_thread(analyze_alpha_strategy, symbol, exchange="bybit")
+            for symbol in symbols
+        ),
+        return_exceptions=True,
+    )
+    for symbol, result in zip(symbols, analyses):
+        if isinstance(result, Exception):
+            print(f"Ошибка фоновой статистики Alpha {symbol}: {result}")
+            continue
+        await asyncio.to_thread(save_snapshot_if_due, result)
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -874,6 +894,12 @@ def main():
         interval=15 * 60,
         first=30,
         name="btc_eth_auto_signals",
+    )
+    app.job_queue.run_repeating(
+        track_alpha_effectiveness,
+        interval=15 * 60,
+        first=60,
+        name="alpha_effectiveness_tracker",
     )
 
     print("Бот запущен...")

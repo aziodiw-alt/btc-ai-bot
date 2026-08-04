@@ -1622,6 +1622,72 @@ body.is-resizing-workspace {
     gap: 16px;
 }
 
+.effectiveness-panel {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 18px;
+    background: linear-gradient(145deg, rgb(30 41 59 / 96%), rgb(11 19 34 / 96%));
+    border: 1px solid #334155;
+    border-radius: 14px;
+}
+
+.effectiveness-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.effectiveness-heading > div {
+    display: grid;
+    gap: 4px;
+}
+
+.effectiveness-heading span,
+.effectiveness-metrics span,
+.effectiveness-commentary small {
+    color: #94a3b8;
+    font-size: 11px;
+}
+
+.effectiveness-metrics {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(90px, 1fr));
+    gap: 8px;
+}
+
+.effectiveness-metrics > div {
+    display: grid;
+    gap: 5px;
+    padding: 10px;
+    background: #111827;
+    border: 1px solid #334155;
+    border-radius: 9px;
+}
+
+.effectiveness-metrics strong {
+    font-size: 20px;
+}
+
+.effectiveness-commentary {
+    padding: 12px 14px;
+    background: rgb(37 99 235 / 10%);
+    border-left: 3px solid #60a5fa;
+    border-radius: 8px;
+}
+
+.effectiveness-commentary p {
+    margin: 6px 0;
+    color: #dbeafe;
+}
+
+@media (max-width: 900px) {
+    .effectiveness-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 .history-table-card {
     margin-top: 16px;
     overflow: hidden;

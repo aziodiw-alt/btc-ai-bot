@@ -250,6 +250,44 @@ class StorageSchemaContractTest(unittest.TestCase):
             ["swing", "fast", "alpha"],
         )
 
+    def test_strategy_signal_moves_from_waiting_to_active_and_tp2(self):
+        result = {
+            "display_symbol": "BTC/USDT",
+            "exchange": "bybit",
+            "strategy_key": "alpha",
+            "price": 110.0,
+            "planned_entry": 100.0,
+            "stop_loss": 95.0,
+            "take_profit_1": 103.0,
+            "take_profit_2": 105.0,
+            "total_score": 70,
+            "grade": "WAIT",
+            "decision": "WAIT_PULLBACK",
+            "trend_score": 20,
+            "entry_score": 10,
+            "indicators_score": 10,
+            "sentiment_score": 30,
+            "rsi_4h": 50.0,
+            "reasons": [],
+            "warnings": [],
+        }
+
+        dashboard_history.save_snapshot_if_due(result, 0)
+        result["price"] = 99.0
+        dashboard_history.save_snapshot_if_due(result, 0)
+        active = dashboard_history.get_strategy_effectiveness(
+            "alpha", "BTC/USDT", "bybit"
+        )
+        result["price"] = 106.0
+        dashboard_history.save_snapshot_if_due(result, 0)
+        completed = dashboard_history.get_strategy_effectiveness(
+            "alpha", "BTC/USDT", "bybit"
+        )
+
+        self.assertEqual(active["counts"]["ACTIVE"], 1)
+        self.assertEqual(completed["counts"]["TP2"], 1)
+        self.assertEqual(completed["win_rate"], 100.0)
+
     def test_legacy_history_schema_is_upgraded_without_losing_rows(self):
         with sqlite3.connect(self.dashboard_database) as connection:
             connection.execute(

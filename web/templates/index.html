@@ -1423,6 +1423,35 @@
             <section>
                 <h2 class="section-title">История и статистика</h2>
 
+                <div class="effectiveness-panel">
+                    <div class="effectiveness-heading">
+                        <div>
+                            <strong>Эффективность {{ active_strategy|capitalize }}</strong>
+                            <span>{{ active_symbol.replace("USDT", "/USDT") }} · {{ active_exchange|upper }}</span>
+                        </div>
+                        <span class="connection-badge is-market">Наблюдение без изменения стратегии</span>
+                    </div>
+                    <div class="effectiveness-metrics">
+                        <div><span>Сценариев</span><strong>{{ effectiveness["total"] }}</strong></div>
+                        <div><span>Ожидают входа</span><strong>{{ effectiveness["counts"]["NOT_TRIGGERED"] }}</strong></div>
+                        <div><span>Активны</span><strong>{{ effectiveness["counts"]["ACTIVE"] }}</strong></div>
+                        <div><span>TP1</span><strong class="status-wait">{{ effectiveness["counts"]["TP1"] }}</strong></div>
+                        <div><span>TP2</span><strong class="status-buy">{{ effectiveness["counts"]["TP2"] }}</strong></div>
+                        <div><span>Stop</span><strong class="status-skip">{{ effectiveness["counts"]["STOP"] }}</strong></div>
+                        <div>
+                            <span>Win Rate</span>
+                            <strong>
+                                {{ effectiveness["win_rate"] ~ "%" if effectiveness["win_rate"] is not none else "—" }}
+                            </strong>
+                        </div>
+                    </div>
+                    <div class="effectiveness-commentary">
+                        <strong>AI-комментарий</strong>
+                        <p>{{ effectiveness["commentary"] }}</p>
+                        <small>Вывод строится только по завершённым зафиксированным сценариям.</small>
+                    </div>
+                </div>
+
                 <div class="strategy-comparison">
                     {% for strategy in strategy_comparison %}
                         <a
