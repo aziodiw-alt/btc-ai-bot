@@ -144,9 +144,13 @@ class BinanceReadOnlyClient:
         return {
             "connected": True,
             "base_url": self.base_url,
-            "can_read": True,
-            "can_trade": bool(account.get("canTrade")),
-            "can_withdraw": bool(account.get("canWithdraw")),
+            "client_mode": "read_only",
+            "api_key_permission_note": (
+                "Permissions must be verified in Binance API Management. "
+                "Account capability fields do not describe this API key."
+            ),
+            "account_can_trade": bool(account.get("canTrade")),
+            "account_can_withdraw": bool(account.get("canWithdraw")),
             "account_type": str(account.get("accountType") or "SPOT"),
             "currencies": balances,
         }

@@ -41,8 +41,11 @@ class BinanceReadOnlyClientTests(unittest.TestCase):
         status = self.client.connection_status()
 
         self.assertTrue(status["connected"])
-        self.assertFalse(status["can_trade"])
-        self.assertFalse(status["can_withdraw"])
+        self.assertEqual(status["client_mode"], "read_only")
+        self.assertFalse(status["account_can_trade"])
+        self.assertFalse(status["account_can_withdraw"])
+        self.assertNotIn("can_trade", status)
+        self.assertNotIn("can_withdraw", status)
         self.assertEqual(status["currencies"][0]["total"], 30.0)
         params = self.session.get.call_args.kwargs["params"]
         self.assertEqual(params["timestamp"], 1700000000000)
