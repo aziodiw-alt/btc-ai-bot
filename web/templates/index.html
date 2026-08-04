@@ -409,17 +409,67 @@
                                 <span>Планируемая средняя</span>
                                 <strong>{{ "{:,.2f}".format(result["planned_entry"]).replace(",", " ") }}</strong>
                             </div>
+                            <label class="alpha-budget-field">
+                                <span>
+                                    Общая сумма,
+                                    {{ 'USDC' if active_exchange == 'okx' else 'USDT' }}
+                                </span>
+                                <input
+                                    id="alpha-total-budget"
+                                    type="number"
+                                    min="0"
+                                    step="0.01"
+                                    inputmode="decimal"
+                                    placeholder="Например, 1 000"
+                                >
+                            </label>
+                            <div class="alpha-allocation-heading">
+                                <span>Ордер</span>
+                                <span>Доля</span>
+                                <span>Цена</span>
+                                <span>Сумма</span>
+                                <span></span>
+                            </div>
                             {% for entry in result["entry_plan"] %}
-                                <div class="alpha-entry-row">
+                                <div
+                                    class="alpha-entry-row"
+                                    data-alpha-allocation="{{ entry['allocation_pct'] }}"
+                                >
                                     <span>{{ entry["label"] }}</span>
                                     <strong>{{ entry["allocation_pct"] }}%</strong>
                                     <span>{{ "{:,.2f}".format(entry["price"]).replace(",", " ") }}</span>
+                                    <strong
+                                        id="alpha-entry-amount-{{ loop.index }}"
+                                        class="alpha-entry-amount"
+                                        data-currency="{{ 'USDC' if active_exchange == 'okx' else 'USDT' }}"
+                                    >—</strong>
+                                    <button
+                                        class="copy-level-button alpha-copy-button"
+                                        type="button"
+                                        data-copy-target="alpha-entry-amount-{{ loop.index }}"
+                                        disabled
+                                    >Копировать</button>
                                 </div>
                             {% endfor %}
+                            <p class="alpha-budget-hint">
+                                Сумма автоматически делится на 20% / 30% / 50%
+                                и округляется до двух знаков.
+                            </p>
                             <div class="alpha-trailing">
                                 <strong>Защита после TP1</strong>
                                 <span>Protected stop: {{ "{:,.2f}".format(result["trailing_stop"]["protected_stop"]).replace(",", " ") }}</span>
-                                <span>Trailing: {{ result["trailing_stop"]["trail_distance_pct"] }}%</span>
+                                <span>
+                                    Дистанция trailing-stop:
+                                    {{ result["trailing_stop"]["trail_distance_pct"] }}%
+                                </span>
+                                <small>
+                                    После достижения TP1 защитный стоп переносится выше
+                                    средней цены входа. При дальнейшем росте он следует за
+                                    ценой на расстоянии
+                                    {{ result["trailing_stop"]["trail_distance_pct"] }}%,
+                                    но при снижении назад не опускается. Это план сопровождения:
+                                    бот не перемещает ордера автоматически.
+                                </small>
                             </div>
                         </div>
                         <div
