@@ -19,6 +19,7 @@ from strategy import analyze_strategy
 from fast_strategy import analyze_fast_strategy
 from alpha_strategy import analyze_alpha_strategy
 from okx_client import OkxReadOnlyClient
+from binance_client import BinanceReadOnlyClient
 from dashboard_history import (
     get_dashboard_history,
     get_strategy_effectiveness,
@@ -151,6 +152,14 @@ def okx_status():
                 "error": str(error),
             }
         ), 502
+
+
+@app.route("/api/binance/status")
+def binance_status():
+    try:
+        return jsonify(BinanceReadOnlyClient().connection_status())
+    except Exception as error:
+        return jsonify({"connected": False, "error": str(error)}), 502
 
 
 @app.template_filter("local_datetime")

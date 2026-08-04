@@ -15,6 +15,7 @@ OFFLINE_TEST_MODULES = (
     "test_levels",
     "test_market_state",
     "test_okx_client",
+    "test_binance_client",
     "test_pending_order_profit",
     "test_sell_advice",
     "test_package_boundaries",
