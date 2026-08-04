@@ -82,6 +82,21 @@ DISPLAY_TIMEZONE = ZoneInfo(
 )
 
 
+def _build_manual_wallet_portfolio(wallet, prices):
+    currencies = []
+    total_usdt = 0.0
+    for currency in ("BTC", "ETH", "USDT"):
+        amount = float(wallet.get(currency.lower()) or 0)
+        price = 1.0 if currency == "USDT" else prices.get(currency)
+        value = amount * float(price) if price is not None else None
+        if value is not None:
+            total_usdt += value
+        currencies.append(
+            {"currency": currency, "total": amount, "usdt_value": value}
+        )
+    return {"total_usdt": total_usdt, "currencies": currencies}
+
+
 @app.before_request
 def require_dashboard_login():
     if request.endpoint == "health":
@@ -321,6 +336,7 @@ def home():
         "usdt": 0.0,
         "updated_at": None,
     }
+    manual_bybit_portfolio = {"total_usdt": 0.0, "currencies": []}
     sell_advice = {
         "available": False,
         "reason": "Нет данных для расчёта.",
@@ -361,6 +377,22 @@ def home():
     else:
         try:
             manual_bybit_wallet = get_manual_wallet()
+            manual_prices = {}
+            if result:
+                manual_prices[asset_info["asset"]] = float(result["price"])
+            for wallet_asset in ("BTC", "ETH"):
+                if (
+                    float(manual_bybit_wallet.get(wallet_asset.lower()) or 0) > 0
+                    and wallet_asset not in manual_prices
+                ):
+                    try:
+                        ticker = get_ticker(f"{wallet_asset}USDT", "bybit")
+                        manual_prices[wallet_asset] = float(ticker["price"])
+                    except Exception:
+                        pass
+            manual_bybit_portfolio = _build_manual_wallet_portfolio(
+                manual_bybit_wallet, manual_prices
+            )
         except Exception as exc:
             trade_data_error = str(exc)
 
@@ -443,6 +475,7 @@ def home():
         okx_open_orders=okx_open_orders,
         okx_trade_history=okx_trade_history,
         manual_bybit_wallet=manual_bybit_wallet,
+        manual_bybit_portfolio=manual_bybit_portfolio,
         wallet_saved=request.args.get("wallet_saved") == "1",
         wallet_error=request.args.get("wallet_error"),
         error=error,

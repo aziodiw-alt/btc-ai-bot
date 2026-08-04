@@ -162,6 +162,34 @@
                             </small>
                         {% endif %}
                     </div>
+                    <div class="portfolio-balance-area manual-wallet-portfolio">
+                        <div class="portfolio-total">
+                            <span>Общий баланс</span>
+                            <strong>
+                                <small>≈</small>
+                                {{ "{:,.2f}".format(manual_bybit_portfolio["total_usdt"]) }}
+                                <em>USDT</em>
+                            </strong>
+                        </div>
+                        <div class="exchange-balances">
+                            {% for balance in manual_bybit_portfolio["currencies"] %}
+                                <span class="exchange-balance">
+                                    <span class="balance-currency">{{ balance["currency"] }}</span>
+                                    <span class="balance-amount">
+                                        {{ "{:,.8f}".format(balance["total"]).rstrip("0").rstrip(".") or "0" }}
+                                    </span>
+                                    <small>Введено вручную</small>
+                                    <em>
+                                        {% if balance["usdt_value"] is not none %}
+                                            ≈ {{ "{:,.2f}".format(balance["usdt_value"]) }} USDT
+                                        {% else %}
+                                            Котировка недоступна
+                                        {% endif %}
+                                    </em>
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
                     {% if wallet_saved %}
                         <div class="form-message form-success">
                             Баланс Bybit сохранён.
@@ -263,22 +291,26 @@
                         </div>
                     </div>
 
-                    <div class="card">
+                    {% set total_ratio = result["total_score"] / 100 %}
+                    <div class="card score-card {{ 'score-high' if total_ratio >= 0.8 else ('score-mid' if total_ratio >= 0.5 else 'score-low') }}">
                         <div class="label">Итоговый Score</div>
                         <div class="value">{{ result["total_score"] }}/100</div>
                     </div>
 
-                    <div class="card">
+                    {% set trend_ratio = result["trend_score"] / result.get("trend_max", 40) %}
+                    <div class="card score-card {{ 'score-high' if trend_ratio >= 0.8 else ('score-mid' if trend_ratio >= 0.5 else 'score-low') }}">
                         <div class="label">Trend</div>
                         <div class="value">{{ result["trend_score"] }}/{{ result.get("trend_max", 40) }}</div>
                     </div>
 
-                    <div class="card">
+                    {% set entry_ratio = result["entry_score"] / result.get("entry_max", 20) %}
+                    <div class="card score-card {{ 'score-high' if entry_ratio >= 0.8 else ('score-mid' if entry_ratio >= 0.5 else 'score-low') }}">
                         <div class="label">Entry</div>
                         <div class="value">{{ result["entry_score"] }}/{{ result.get("entry_max", 20) }}</div>
                     </div>
 
-                    <div class="card">
+                    {% set indicators_ratio = result["indicators_score"] / result.get("indicators_max", 10) %}
+                    <div class="card score-card {{ 'score-high' if indicators_ratio >= 0.8 else ('score-mid' if indicators_ratio >= 0.5 else 'score-low') }}">
                         <div class="label">Indicators</div>
                         <div class="value">{{ result["indicators_score"] }}/{{ result.get("indicators_max", 10) }}</div>
                         <div class="score-breakdown">
@@ -287,7 +319,8 @@
                         </div>
                     </div>
 
-                    <div class="card">
+                    {% set sentiment_ratio = result["sentiment_score"] / result.get("sentiment_max", 30) %}
+                    <div class="card score-card {{ 'score-high' if sentiment_ratio >= 0.8 else ('score-mid' if sentiment_ratio >= 0.5 else 'score-low') }}">
                         <div class="label">Sentiment</div>
                         <div class="value">{{ result["sentiment_score"] }}/{{ result.get("sentiment_max", 30) }}</div>
                     </div>

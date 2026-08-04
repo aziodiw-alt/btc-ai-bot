@@ -281,6 +281,18 @@ class DashboardAnalysisContractTest(unittest.TestCase):
             btc="0.01", eth="0.5", usdt="100"
         )
 
+    def test_manual_bybit_portfolio_values_tokens_in_usdt(self):
+        portfolio = web_app._build_manual_wallet_portfolio(
+            {"btc": 0.01, "eth": 0.5, "usdt": 100},
+            {"BTC": 60000, "ETH": 3000},
+        )
+
+        self.assertEqual(portfolio["total_usdt"], 2200.0)
+        self.assertEqual(
+            [item["usdt_value"] for item in portfolio["currencies"]],
+            [600.0, 1500.0, 100.0],
+        )
+
     @patch("web.app.add_pending_orders")
     @patch(
         "web.app._get_cached_strategy",

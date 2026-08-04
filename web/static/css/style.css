@@ -506,6 +506,61 @@ h1 {
     font-size: 12px;
 }
 
+.manual-wallet-portfolio {
+    padding: 10px 0 2px;
+}
+
+.score-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.score-card::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    content: "";
+}
+
+.score-card.score-high {
+    background: linear-gradient(145deg, rgb(6 78 59 / 38%), #1f2937 70%);
+    border-color: rgb(16 185 129 / 65%);
+}
+
+.score-card.score-high::before {
+    background: #34d399;
+}
+
+.score-card.score-high .value {
+    color: #6ee7b7;
+}
+
+.score-card.score-mid {
+    background: linear-gradient(145deg, rgb(120 53 15 / 32%), #1f2937 70%);
+    border-color: rgb(245 158 11 / 58%);
+}
+
+.score-card.score-mid::before {
+    background: #fbbf24;
+}
+
+.score-card.score-mid .value {
+    color: #fcd34d;
+}
+
+.score-card.score-low {
+    background: linear-gradient(145deg, rgb(127 29 29 / 30%), #1f2937 70%);
+    border-color: rgb(239 68 68 / 55%);
+}
+
+.score-card.score-low::before {
+    background: #f87171;
+}
+
+.score-card.score-low .value {
+    color: #fca5a5;
+}
+
 @media (max-width: 720px) {
     .manual-wallet-form {
         grid-template-columns: 1fr;
