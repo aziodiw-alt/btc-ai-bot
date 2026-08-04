@@ -39,6 +39,16 @@
                             <strong>Bybit</strong>
                             <em>≈ {{ "{:,.2f}".format(manual_bybit_portfolio["total_usdt"]) }} USDT</em>
                         </span>
+                        <span class="global-balance global-balance-binance">
+                            <strong>Binance</strong>
+                            <em>
+                                {% if binance_account and binance_account["connected"] %}
+                                    ≈ {{ "{:,.2f}".format(binance_account["total_usd"]) }} USDT
+                                {% else %}
+                                    недоступен
+                                {% endif %}
+                            </em>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -66,6 +76,13 @@
                                 <strong>OKX</strong>
                                 <small>USDC</small>
                             </span>
+                        </a>
+                        <a
+                            class="exchange-button exchange-binance {{ 'is-active' if active_exchange == 'binance' else '' }}"
+                            href="{{ url_for('home', symbol=active_symbol, strategy=active_strategy, exchange='binance') }}"
+                        >
+                            <span class="exchange-button-icon exchange-button-icon-binance">B</span>
+                            <span><strong>Binance</strong><small>USDT</small></span>
                         </a>
                     </nav>
                 </div>
@@ -109,11 +126,15 @@
         <section class="exchange-account-bar exchange-account-{{ active_exchange }}">
             <div class="exchange-account-heading">
                 <span class="exchange-account-name">
-                    {{ "OKX" if active_exchange == "okx" else "Bybit" }}
+                    {{ "OKX" if active_exchange == "okx" else ("Binance" if active_exchange == "binance" else "Bybit") }}
                 </span>
                 {% if active_exchange == "okx" and okx_account and okx_account["connected"] %}
                     <span class="connection-badge is-connected">Подключено · только чтение</span>
                 {% elif active_exchange == "okx" %}
+                    <span class="connection-badge is-error">Нет соединения</span>
+                {% elif active_exchange == "binance" and binance_account and binance_account["connected"] %}
+                    <span class="connection-badge is-connected">Подключено · клиент только для чтения</span>
+                {% elif active_exchange == "binance" %}
                     <span class="connection-badge is-error">Нет соединения</span>
                 {% else %}
                     <span class="connection-badge is-market">Основная биржа</span>
@@ -156,6 +177,33 @@
                                         Доступно:
                                         {{ "{:,.8f}".format(balance["available"]).rstrip("0").rstrip(".") }}
                                     </small>
+                                    <em>≈ ${{ "{:,.2f}".format(balance["usd_value"]) }}</em>
+                                </span>
+                            {% else %}
+                                <span class="exchange-balance-empty">Ненулевые балансы не найдены</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% elif active_exchange == "binance" %}
+                {% if binance_account_error %}
+                    <p class="exchange-account-error">{{ binance_account_error }}</p>
+                {% elif binance_account %}
+                    <div class="portfolio-balance-area">
+                        <div class="portfolio-total">
+                            <span>Общий Spot-баланс</span>
+                            <strong>
+                                <small>≈</small>
+                                {{ "{:,.2f}".format(binance_account["total_usd"]) }}
+                                <em>USDT</em>
+                            </strong>
+                        </div>
+                        <div class="exchange-balances">
+                            {% for balance in binance_account["currencies"] %}
+                                <span class="exchange-balance" data-usd-value="{{ balance['usd_value'] }}">
+                                    <span class="balance-currency">{{ balance["currency"] }}</span>
+                                    <span class="balance-amount">{{ "{:,.8f}".format(balance["total"]).rstrip("0").rstrip(".") }}</span>
+                                    <small>Доступно: {{ "{:,.8f}".format(balance["available"]).rstrip("0").rstrip(".") }}</small>
                                     <em>≈ ${{ "{:,.2f}".format(balance["usd_value"]) }}</em>
                                 </span>
                             {% else %}
@@ -1238,6 +1286,55 @@
                         </table>
                     </div>
                 {% endif %}
+            </section>
+            {% endif %}
+
+            {% if active_exchange == "binance" %}
+            <section class="open-orders-panel open-orders-below-chart">
+                <div class="open-orders-heading">
+                    <div><h2 class="section-title">Открытые ордера Binance</h2><p class="section-description">Spot · только чтение</p></div>
+                    <span class="connection-badge is-connected">{{ binance_open_orders|length }} ордеров</span>
+                </div>
+                {% if binance_account_error %}
+                    <div class="form-message form-error">{{ binance_account_error }}</div>
+                {% else %}
+                    <div class="history-table-scroll">
+                        <table class="history-table open-orders-table">
+                            <thead><tr><th>Дата</th><th>Пара</th><th>Сторона</th><th>Цена</th><th>Остаток</th><th>Сумма</th><th>Статус</th></tr></thead>
+                            <tbody>
+                                {% for order in binance_open_orders %}
+                                    <tr>
+                                        <td>{{ order["created_at"]|local_datetime }}</td><td>{{ order["symbol"] }}</td>
+                                        <td class="{{ 'status-buy' if order['side'] == 'BUY' else 'status-skip' }}">{{ order["side"] }}</td>
+                                        <td>{{ "{:,.2f}".format(order["price"]) }}</td><td>{{ "{:.8f}".format(order["remaining_quantity"]) }}</td>
+                                        <td>{{ "{:,.2f}".format(order["remaining_value"]) }} USDT</td><td>{{ order["status"] }}</td>
+                                    </tr>
+                                {% else %}<tr><td class="history-empty" colspan="7">Открытых ордеров Binance нет.</td></tr>{% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </section>
+            <section class="open-orders-panel open-orders-below-chart">
+                <div class="open-orders-heading">
+                    <div><h2 class="section-title">История сделок Binance</h2><p class="section-description">Последние исполнения {{ active_symbol }}</p></div>
+                    <span class="connection-badge is-connected">{{ binance_trade_history|length }} операций</span>
+                </div>
+                <div class="history-table-scroll collapsible-history" data-visible-rows="5">
+                    <table class="history-table open-orders-table">
+                        <thead><tr><th>Дата</th><th>Сторона</th><th>Цена</th><th>Количество</th><th>Сумма</th><th>Комиссия</th></tr></thead>
+                        <tbody>
+                            {% for trade in binance_trade_history %}
+                                <tr>
+                                    <td>{{ trade["created_at"]|local_datetime }}</td>
+                                    <td class="{{ 'status-buy' if trade['side'] == 'BUY' else 'status-skip' }}">{{ trade["side"] }}</td>
+                                    <td>{{ "{:,.2f}".format(trade["price"]) }}</td><td>{{ "{:.8f}".format(trade["quantity"]) }}</td>
+                                    <td>{{ "{:,.2f}".format(trade["value"]) }} USDT</td><td>{{ trade["fee"] }} {{ trade["fee_currency"] }}</td>
+                                </tr>
+                            {% else %}<tr><td class="history-empty" colspan="6">История сделок Binance пока пуста.</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </section>
             {% endif %}
 

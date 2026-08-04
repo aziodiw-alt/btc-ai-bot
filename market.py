@@ -1,6 +1,7 @@
 """Backward-compatible public market-data functions."""
 
 from btc_terminal.market.bybit import BybitMarketDataProvider
+from btc_terminal.market.binance import BinanceMarketDataProvider
 from btc_terminal.market.okx import (
     OkxMarketDataProvider,
     normalize_okx_interval,
@@ -9,7 +10,8 @@ from btc_terminal.market.okx import (
 
 
 def _normalize_exchange(exchange):
-    return "okx" if str(exchange).lower() == "okx" else "bybit"
+    normalized = str(exchange).lower()
+    return normalized if normalized in {"bybit", "okx", "binance"} else "bybit"
 
 
 def _okx_symbol(symbol):
@@ -21,8 +23,11 @@ def _okx_interval(interval):
 
 
 def _provider(exchange):
-    if _normalize_exchange(exchange) == "okx":
+    normalized = _normalize_exchange(exchange)
+    if normalized == "okx":
         return OkxMarketDataProvider()
+    if normalized == "binance":
+        return BinanceMarketDataProvider()
     return BybitMarketDataProvider()
 
 

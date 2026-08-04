@@ -356,6 +356,10 @@ def home():
     okx_account_error = None
     okx_open_orders = []
     okx_trade_history = []
+    binance_account = None
+    binance_account_error = None
+    binance_open_orders = []
+    binance_trade_history = []
     manual_bybit_wallet = {
         "btc": 0.0,
         "eth": 0.0,
@@ -400,6 +404,14 @@ def home():
             )
         except Exception as exc:
             okx_account_error = str(exc)
+    elif active_exchange == "binance":
+        try:
+            binance_client = BinanceReadOnlyClient()
+            binance_account = binance_client.connection_status()
+            binance_open_orders = binance_client.get_open_orders(symbol)
+            binance_trade_history = binance_client.get_trade_history(symbol)
+        except Exception as exc:
+            binance_account_error = str(exc)
     else:
         try:
             manual_bybit_wallet = get_manual_wallet()
@@ -422,7 +434,7 @@ def home():
         except Exception as exc:
             trade_data_error = str(exc)
 
-    if active_exchange == "okx":
+    if active_exchange != "bybit":
         try:
             manual_bybit_wallet = get_manual_wallet()
             manual_prices = {}
@@ -438,9 +450,14 @@ def home():
             )
         except Exception:
             pass
-    elif okx_account is None:
+    if okx_account is None:
         try:
             okx_account = OkxReadOnlyClient().connection_status()
+        except Exception:
+            pass
+    if binance_account is None:
+        try:
+            binance_account = BinanceReadOnlyClient().connection_status()
         except Exception:
             pass
 
@@ -526,6 +543,10 @@ def home():
         okx_account_error=okx_account_error,
         okx_open_orders=okx_open_orders,
         okx_trade_history=okx_trade_history,
+        binance_account=binance_account,
+        binance_account_error=binance_account_error,
+        binance_open_orders=binance_open_orders,
+        binance_trade_history=binance_trade_history,
         manual_bybit_wallet=manual_bybit_wallet,
         manual_bybit_portfolio=manual_bybit_portfolio,
         wallet_saved=request.args.get("wallet_saved") == "1",

@@ -25,7 +25,7 @@ class AnalysisSelectionContractTest(unittest.TestCase):
     def test_exchange_selection_preserves_current_fallback(self):
         self.assertEqual(normalize_exchange(" OKX "), "okx")
         self.assertEqual(normalize_exchange("BYBIT"), "bybit")
-        self.assertEqual(normalize_exchange("binance"), "bybit")
+        self.assertEqual(normalize_exchange("binance"), "binance")
         self.assertEqual(normalize_exchange(None), "bybit")
 
 

@@ -107,14 +107,14 @@ class DashboardAnalysisContractTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertEqual(payload["symbol"], "BTCUSDT")
-        self.assertEqual(payload["exchange"], "bybit")
+        self.assertEqual(payload["exchange"], "binance")
         self.assertEqual(payload["display_symbol"], "BTC/USDT")
         self.assertEqual(payload["timeframe"], "D")
         self.assertEqual(payload["timeframe_label"], "1D")
         self.assertEqual(payload["levels"]["current_price"], 105.0)
         self.assertEqual(payload["levels"]["support_zone"], [89.0, 91.0])
-        get_cached_candles.assert_called_once_with("D", "BTCUSDT", "bybit")
-        get_cached_strategy.assert_called_once_with("alpha", "BTCUSDT", "bybit")
+        get_cached_candles.assert_called_once_with("D", "BTCUSDT", "binance")
+        get_cached_strategy.assert_called_once_with("alpha", "BTCUSDT", "binance")
 
     @patch("web.app._ai_report_service.news_loader")
     @patch("web.app._ai_report_service.whale_loader")
@@ -258,7 +258,7 @@ class DashboardAnalysisContractTest(unittest.TestCase):
         self.assertEqual(web_app._normalize_symbol("eth/usdt"), "ETHUSDT")
         self.assertEqual(web_app._normalize_symbol("SOLUSDT"), "BTCUSDT")
         self.assertEqual(web_app._normalize_exchange("OKX"), "okx")
-        self.assertEqual(web_app._normalize_exchange("binance"), "bybit")
+        self.assertEqual(web_app._normalize_exchange("binance"), "binance")
 
     @patch("web.app.save_manual_wallet")
     def test_manual_bybit_wallet_update_redirects_to_wallet(self, save_wallet):

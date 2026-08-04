@@ -14,8 +14,9 @@ class LegacyMarketDataProvider:
         ticker_function=legacy_get_ticker,
         klines_function=legacy_get_klines,
     ):
+        normalized = str(exchange).lower()
         self.exchange = (
-            "okx" if str(exchange).lower() == "okx" else "bybit"
+            normalized if normalized in {"bybit", "okx", "binance"} else "bybit"
         )
         self._ticker_function = ticker_function
         self._klines_function = klines_function

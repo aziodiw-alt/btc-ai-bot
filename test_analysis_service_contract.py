@@ -18,7 +18,7 @@ class AnalysisServiceContractTest(unittest.TestCase):
             clock=lambda: next(times),
         )
 
-        first = service.analyze("unknown", "SOLUSDT", "binance")
+        first = service.analyze("unknown", "SOLUSDT", "unknown-exchange")
         cached = service.analyze("swing", "BTCUSDT", "bybit")
         refreshed = service.analyze("swing", "BTCUSDT", "bybit")
 

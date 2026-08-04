@@ -26,8 +26,8 @@ class BinanceReadOnlyClientTests(unittest.TestCase):
         return response
 
     def test_signed_account_request_and_permissions(self):
-        self.session.get.return_value = self._response(
-            {
+        self.session.get.side_effect = [
+            self._response({
                 "canTrade": False,
                 "canWithdraw": False,
                 "accountType": "SPOT",
@@ -35,8 +35,9 @@ class BinanceReadOnlyClientTests(unittest.TestCase):
                     {"asset": "USDT", "free": "25", "locked": "5"},
                     {"asset": "BTC", "free": "0", "locked": "0"},
                 ],
-            }
-        )
+            }),
+            self._response([{"symbol": "BTCUSDT", "price": "60000"}]),
+        ]
 
         status = self.client.connection_status()
 
@@ -47,7 +48,7 @@ class BinanceReadOnlyClientTests(unittest.TestCase):
         self.assertNotIn("can_trade", status)
         self.assertNotIn("can_withdraw", status)
         self.assertEqual(status["currencies"][0]["total"], 30.0)
-        params = self.session.get.call_args.kwargs["params"]
+        params = self.session.get.call_args_list[0].kwargs["params"]
         self.assertEqual(params["timestamp"], 1700000000000)
         self.assertEqual(len(params["signature"]), 64)
 

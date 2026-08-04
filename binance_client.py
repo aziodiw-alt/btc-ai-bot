@@ -69,6 +69,13 @@ class BinanceReadOnlyClient:
     def get_account(self):
         return self._get("/api/v3/account", {"omitZeroBalances": "true"})
 
+    def get_market_prices(self):
+        data = self._get("/api/v3/ticker/price", signed=False)
+        return {
+            str(item.get("symbol") or ""): float(item.get("price") or 0)
+            for item in data
+        }
+
     def get_open_orders(self, symbol=None):
         params = {"symbol": str(symbol).upper()} if symbol else None
         data = self._get("/api/v3/openOrders", params)
@@ -127,18 +134,28 @@ class BinanceReadOnlyClient:
 
     def connection_status(self):
         account = self.get_account()
+        prices = self.get_market_prices()
         balances = []
+        total_usd = 0.0
         for item in account.get("balances") or []:
             free = float(item.get("free") or 0)
             locked = float(item.get("locked") or 0)
             if free == 0 and locked == 0:
                 continue
+            currency = str(item.get("asset") or "")
+            total = free + locked
+            if currency in {"USDT", "USDC", "FDUSD", "BUSD"}:
+                usd_value = total
+            else:
+                usd_value = total * float(prices.get(f"{currency}USDT", 0))
+            total_usd += usd_value
             balances.append(
                 {
-                    "currency": str(item.get("asset") or ""),
-                    "total": free + locked,
+                    "currency": currency,
+                    "total": total,
                     "available": free,
                     "locked": locked,
+                    "usd_value": usd_value,
                 }
             )
         return {
@@ -152,6 +169,7 @@ class BinanceReadOnlyClient:
             "account_can_trade": bool(account.get("canTrade")),
             "account_can_withdraw": bool(account.get("canWithdraw")),
             "account_type": str(account.get("accountType") or "SPOT"),
+            "total_usd": total_usd,
             "currencies": balances,
         }
 

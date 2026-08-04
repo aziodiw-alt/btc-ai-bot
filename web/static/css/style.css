@@ -134,6 +134,10 @@ h1 {
     border-left: 3px solid #f59e0b;
 }
 
+.global-balance-binance {
+    border-left: 3px solid #f3ba2f;
+}
+
 .dashboard-switchers {
     display: flex;
     flex-direction: column;
@@ -225,6 +229,11 @@ h1 {
     background: #f8fafc;
 }
 
+.exchange-button-icon-binance {
+    color: #18181b;
+    background: #f3ba2f;
+}
+
 .exchange-button:hover {
     color: #f8fafc;
     background: #1e293b;
@@ -240,6 +249,12 @@ h1 {
     color: #f8fafc;
     background: #334155;
     border-color: #cbd5e1;
+}
+
+.exchange-binance.is-active {
+    color: #fef3c7;
+    background: #713f12;
+    border-color: #f3ba2f;
 }
 
 .exchange-account-bar {
@@ -265,6 +280,10 @@ h1 {
 
 .exchange-account-okx {
     border-left-color: #e2e8f0;
+}
+
+.exchange-account-binance {
+    border-left-color: #f3ba2f;
 }
 
 .exchange-account-heading {

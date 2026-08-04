@@ -2,6 +2,10 @@ import unittest
 from unittest.mock import Mock
 
 from btc_terminal.market.bybit import BybitMarketDataProvider
+from btc_terminal.market.binance import (
+    BinanceMarketDataProvider,
+    normalize_binance_interval,
+)
 from btc_terminal.market.okx import (
     OkxMarketDataProvider,
     normalize_okx_interval,
@@ -117,6 +121,28 @@ class OkxMarketDataProviderTest(unittest.TestCase):
             session.get.call_args_list[1].kwargs["params"],
             {"instId": "BTC-USDC", "bar": "1Dutc", "limit": 300},
         )
+
+
+class BinanceMarketDataProviderTest(unittest.TestCase):
+    def test_ticker_and_candles_are_normalized(self):
+        session = Mock()
+        session.get.side_effect = [
+            response({
+                "lastPrice": "100.5", "highPrice": "110",
+                "lowPrice": "90", "volume": "1234.5",
+            }),
+            response([
+                [1, "1", "2", "0.5", "1.5", "10", "15"],
+                [2, "2", "3", "1", "2.5", "20", "50"],
+            ]),
+        ]
+        provider = BinanceMarketDataProvider("https://binance.test", session)
+
+        self.assertEqual(normalize_binance_interval("240"), "4h")
+        self.assertEqual(provider.get_ticker("BTCUSDT")["price"], 100.5)
+        frame = provider.get_klines("D", 250, "BTCUSDT")
+        self.assertEqual(frame["time"].tolist(), [1, 2])
+        self.assertEqual(frame["close"].tolist(), [1.5, 2.5])
 
 
 if __name__ == "__main__":

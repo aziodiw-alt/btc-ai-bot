@@ -20,7 +20,7 @@ def normalize_symbol(value):
 
 def normalize_exchange(value):
     normalized = str(value or "bybit").strip().lower()
-    return normalized if normalized in {"bybit", "okx"} else "bybit"
+    return normalized if normalized in {"bybit", "okx", "binance"} else "bybit"
 
 
 __all__ = [
